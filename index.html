@@ -1982,6 +1982,38 @@
       return score;
     }
 
+    function googleBooksJsonp(params){
+      return new Promise((resolve,reject)=>{
+        const callbackName=`yondaGoogleBooks_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        const script=document.createElement("script");
+        const timeoutId=setTimeout(()=>{
+          cleanup();
+          reject(new Error("Google Books search timed out"));
+        },12000);
+
+        function cleanup(){
+          clearTimeout(timeoutId);
+          script.remove();
+          try{ delete window[callbackName]; }catch(e){ window[callbackName]=undefined; }
+        }
+
+        window[callbackName]=(data)=>{
+          cleanup();
+          resolve(data||{});
+        };
+
+        script.onerror=()=>{
+          cleanup();
+          reject(new Error("Google Books JSONP failed"));
+        };
+
+        params.set("callback",callbackName);
+        script.src=`https://www.googleapis.com/books/v1/volumes?${params.toString()}`;
+        script.async=true;
+        document.head.appendChild(script);
+      });
+    }
+
     async function fetchGoogleBooks(query,exactTitle=false){
       const cleaned=query.trim();
       const isbn=cleaned.replace(/[\s-]/g,"");
@@ -1989,18 +2021,21 @@
       const searchTerm=isIsbn
         ? `isbn:${isbn}`
         : exactTitle
-          ? `intitle:"${cleaned}"`
+          ? `intitle:${cleaned}`
           : cleaned;
+
       const params=new URLSearchParams({
         q:searchTerm,
         langRestrict:"ja",
         printType:"books",
         orderBy:"relevance",
-        maxResults:"20"
+        maxResults:"20",
+        country:"JP",
+        projection:"lite"
       });
-      const response=await fetch(`https://www.googleapis.com/books/v1/volumes?${params.toString()}`);
-      if(!response.ok) throw new Error("google books search failed");
-      const data=await response.json();
+
+      const data=await googleBooksJsonp(params);
+      if(data.error) throw new Error(data.error.message||"Google Books search failed");
       return data.items||[];
     }
 
@@ -2052,7 +2087,7 @@
         }).join("");
       }catch(e){
         console.error(e);
-        box.innerHTML='<div class="note">書籍検索サービスに接続できませんでした。通信状態を確認するか、下の欄へ手入力してください。</div>';
+        box.innerHTML='<div class="note">書籍検索サービスに接続できませんでした。少し時間を置いて再検索するか、ISBNを入力するか、下の欄へ手入力してください。</div>';
       }
     }
     window.selectSearchResult=(payload)=>{
