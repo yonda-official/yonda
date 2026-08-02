@@ -1142,18 +1142,26 @@
         <p class="note">以下は正式公開を想定したひな型です。運営者情報、利用サービス、保存先、料金・解約条件が確定した段階で最終調整してください。</p>
 
         <section class="settings-card">
-          <h4>アカウント</h4>
+          <h4>アカウントとデータ保存</h4>
           <div class="account-status">
             <div><strong id="accountStatusTitle">未ログイン</strong><span id="accountStatusText">読書データはこの端末のブラウザ内に保存されています。</span></div>
             <button class="primary" type="button" id="settingsAuthBtn">ログイン</button>
           </div>
           <p class="note" style="margin-top:10px">ログインすると読書データがクラウドに保存され、PCとiPhoneで同じ本棚を利用できます。未ログインでも引き続き利用できます。</p>
-          <div style="margin-top:14px">
-            <label>利用プラン
-              <input class="field" value="Liteプラン（無料）" readonly />
-            </label>
-            <p class="note" style="margin:8px 0 0">Pro版は開発中です。</p>
-          </div>
+        </section>
+
+        <section class="settings-card">
+          <h4>ユーザー情報</h4>
+          <label>表示名
+            <input class="field" id="userName" placeholder="例：しょうた" />
+          </label>
+          <label>メールアドレス
+            <input class="field" id="userEmail" type="email" placeholder="example@email.com" />
+          </label>
+          <label>利用プラン
+            <input class="field" value="Liteプラン（Proは開発中）" disabled />
+          </label>
+          <button class="secondary" id="saveProfileBtn">ユーザー情報を保存</button>
         </section>
 
         <section class="settings-card">
@@ -1167,8 +1175,8 @@
         </section>
 
 <section class="settings-card">
-          <h4>データ管理</h4>
-          <p class="note">読書データのバックアップや表計算ソフト向けの出力ができます。</p>
+          <h4>読書データの保存・出力</h4>
+          <p class="note">端末変更やバックアップに備えて、定期的なデータ保存をおすすめします。</p>
           <div class="settings-actions">
             <button class="secondary" id="csvExportBtn">CSVでダウンロード</button>
             <button class="secondary" id="jsonExportBtn">JSONでバックアップ</button>
@@ -2227,6 +2235,8 @@
     };
     function openSettings(){
       const profile=JSON.parse(localStorage.getItem(PROFILE_KEY)||'{}');
+      $("#userName").value=profile.name||"";
+      $("#userEmail").value=profile.email||"";
       renderGenreSettings();
       $("#settingsModal").classList.add("open");
       $("#settingsModal").setAttribute("aria-hidden","false");
