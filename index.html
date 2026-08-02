@@ -5,9 +5,9 @@
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-FJZPY111P3"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-FJZPY111P3');
+    window.gtag = window.gtag || function(){window.dataLayer.push(arguments);};
+    window.gtag('js', new Date());
+    window.gtag('config', 'G-FJZPY111P3');
   </script>
 
   <meta charset="UTF-8" />
@@ -1824,18 +1824,36 @@
 
     // Google Analytics: 処理成功後のみイベントを送信する
     function trackYondaEvent(name, params = {}){
-      if(typeof window.gtag !== "function") return;
+      if(typeof window.gtag !== "function"){
+        console.warn("Yonda Analytics is not ready:", name);
+        return false;
+      }
+      const eventParams={
+        send_to:"G-FJZPY111P3",
+        transport_type:"beacon",
+        app_version:"metadata-event-fix-v5",
+        ...params
+      };
       try{
-        window.gtag("event", name, {
-          send_to:"G-FJZPY111P3",
-          transport_type:"beacon",
-          app_version:"book-page-fix-v4",
-          ...params
-        });
+        window.gtag("event", name, eventParams);
+        localStorage.setItem("yonda_last_ga_event_v1", JSON.stringify({
+          name,
+          params:eventParams,
+          sentAt:new Date().toISOString()
+        }));
+        console.info("Yonda Analytics event queued:", name, eventParams);
+        return true;
       }catch(error){
         console.warn("Yonda Analytics event error:", error);
+        return false;
       }
     }
+
+    // 公開中のHTMLが最新版かをGA4で確認する診断イベント。
+    // ページを開くたび1回だけ送信される。
+    window.addEventListener("load",()=>{
+      trackYondaEvent("yonda_build_loaded", {build:"metadata-event-fix-v5"});
+    },{once:true});
 
     function save(){
       localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
@@ -2856,43 +2874,105 @@
       return Number(VERIFIED_PAGE_COUNTS[normalized])||0;
     }
 
-    async function fetchGoogleBooksPageCountByIsbn(isbn){
-      try{
-        const items=await fetchGoogleBooks(String(isbn),false);
-        for(const item of items){
-          const pageCount=positivePageNumber(item?.volumeInfo?.pageCount);
-          if(pageCount) return pageCount;
-        }
-      }catch(error){
-        console.warn("Google Books page lookup failed",error);
-      }
-      return 0;
+    function normalizedIsbn(value){
+      return String(value||"").replace(/[^0-9Xx]/g,"").toUpperCase();
     }
 
-    async function fetchOpenBdPageCount(isbn){
-      const normalized=String(isbn||"").replace(/[^0-9Xx]/g,"");
-      if(!normalized) return 0;
-      const controller=new AbortController();
-      const timer=setTimeout(()=>controller.abort(),8000);
-      try{
-        const response=await fetch(`https://api.openbd.jp/v1/get?isbn=${encodeURIComponent(normalized)}`,{signal:controller.signal});
-        if(response.ok){
-          const data=await response.json();
-          const record=Array.isArray(data)?data[0]:null;
-          const openBdPages=record?findOpenBdPageCount(record):0;
-          if(openBdPages) return openBdPages;
+    function googleBookIsbns(item){
+      return (item?.volumeInfo?.industryIdentifiers||[])
+        .map(identifier=>normalizedIsbn(identifier?.identifier))
+        .filter(Boolean);
+    }
+
+    function scoreGooglePageCandidate(item,metadata){
+      const info=item?.volumeInfo||{};
+      const targetIsbn=normalizedIsbn(metadata.isbn);
+      const candidateIsbns=googleBookIsbns(item);
+      const title=normalizeBookText(info.title||"");
+      const targetTitle=normalizeBookText(metadata.title||"");
+      const authors=normalizeBookText((info.authors||[]).join(" "));
+      const targetAuthor=normalizeBookText(metadata.author||"");
+      const publisher=normalizeBookText(info.publisher||"");
+      const targetPublisher=normalizeBookText(metadata.publisher||"");
+      let score=0;
+
+      if(targetIsbn&&candidateIsbns.includes(targetIsbn)) score+=1000;
+      if(targetTitle&&title===targetTitle) score+=260;
+      else if(targetTitle&&(title.includes(targetTitle)||targetTitle.includes(title))) score+=150;
+      if(targetAuthor&&authors.includes(targetAuthor)) score+=120;
+      if(targetPublisher&&publisher===targetPublisher) score+=50;
+      if(info.language==="ja") score+=20;
+      if(positivePageNumber(info.pageCount)) score+=10;
+      return score;
+    }
+
+    async function fetchGoogleBooksPageCount(metadata){
+      const queryPlans=[];
+      const isbn=normalizedIsbn(metadata.isbn);
+      if(isbn) queryPlans.push({query:isbn,exact:false});
+      if(metadata.title&&metadata.author){
+        queryPlans.push({query:`intitle:${metadata.title} inauthor:${metadata.author}`,exact:false});
+      }
+      if(metadata.title) queryPlans.push({query:metadata.title,exact:true});
+
+      const candidates=[];
+      for(const plan of queryPlans){
+        try{
+          const items=await fetchGoogleBooks(plan.query,plan.exact);
+          items.forEach(item=>candidates.push(item));
+        }catch(error){
+          console.warn("Google Books page lookup failed",plan.query,error);
         }
-      }catch(error){
-        console.warn("openBD page lookup failed",error);
-      }finally{
-        clearTimeout(timer);
       }
 
-      // openBDにページ数がない場合は、無料のGoogle BooksをISBN検索で補完
-      const googlePages=await fetchGoogleBooksPageCountByIsbn(normalized);
+      const unique=[];
+      const seen=new Set();
+      for(const item of candidates){
+        const key=item?.id||JSON.stringify(googleBookIsbns(item));
+        if(!key||seen.has(key)) continue;
+        seen.add(key);
+        unique.push(item);
+      }
+
+      const ranked=unique
+        .map(item=>({
+          item,
+          score:scoreGooglePageCandidate(item,metadata),
+          pages:positivePageNumber(item?.volumeInfo?.pageCount)
+        }))
+        .filter(candidate=>candidate.pages>0)
+        .sort((a,b)=>b.score-a.score);
+
+      // ISBN一致、またはタイトル・著者が十分一致した候補だけ採用する。
+      return ranked[0]&&ranked[0].score>=150 ? ranked[0].pages : 0;
+    }
+
+    async function fetchBestPageCount(metadata){
+      const normalized=normalizedIsbn(metadata?.isbn);
+      if(!normalized&&!metadata?.title) return 0;
+      if(normalized){
+        const controller=new AbortController();
+        const timer=setTimeout(()=>controller.abort(),8000);
+        try{
+          const response=await fetch(`https://api.openbd.jp/v1/get?isbn=${encodeURIComponent(normalized)}`,{signal:controller.signal});
+          if(response.ok){
+            const data=await response.json();
+            const record=Array.isArray(data)?data[0]:null;
+            const openBdPages=record?findOpenBdPageCount(record):0;
+            if(openBdPages) return openBdPages;
+          }
+        }catch(error){
+          console.warn("openBD page lookup failed",error);
+        }finally{
+          clearTimeout(timer);
+        }
+      }
+
+      // ISBNだけでなくタイトル・著者・出版社も照合してGoogle Booksを再検索する。
+      const googlePages=await fetchGoogleBooksPageCount(metadata||{});
       if(googlePages) return googlePages;
 
-      // 両APIで欠落する既知の紙書籍は、確認済みISBN値を最終フォールバックにする
+      // 最終手段。今後は原則として追加せず、既存値との互換性のためだけに残す。
       return getVerifiedPageCount(normalized);
     }
 
@@ -2913,18 +2993,19 @@
         return;
       }
 
-      if(d.isbn){
-        resultBox.innerHTML='<div class="note">選択した本の情報を反映しました。ページ数を確認しています...</div>';
-        const pageCount=await fetchOpenBdPageCount(d.isbn);
-        if(pageCount>0){
-          $("#pages").value=pageCount;
-          updatePageFieldNote();
-          resultBox.innerHTML='<div class="note">選択した本の情報とページ数を反映しました。状態やメモを確認して保存してください。</div>';
-        }else{
-          resultBox.innerHTML='<div class="note">選択した本の情報を反映しました。ページ数は書誌データに登録されていないため不明です。必要に応じて手入力してください。</div>';
-        }
+      resultBox.innerHTML='<div class="note">選択した本の情報を反映しました。ページ数を複数の書誌情報から確認しています...</div>';
+      const pageCount=await fetchBestPageCount({
+        isbn:d.isbn||"",
+        title:d.title||"",
+        author:d.author||"",
+        publisher:d.publisher||""
+      });
+      if(pageCount>0){
+        $("#pages").value=pageCount;
+        updatePageFieldNote();
+        resultBox.innerHTML='<div class="note">選択した本の情報とページ数を反映しました。状態やメモを確認して保存してください。</div>';
       }else{
-        resultBox.innerHTML='<div class="note">選択した本の情報を反映しました。ページ数は書誌データに登録されていないため不明です。必要に応じて手入力してください。</div>';
+        resultBox.innerHTML='<div class="note">選択した本の情報を反映しました。複数の書誌データを確認しましたが、版を特定できるページ数が見つかりませんでした。必要に応じて手入力してください。</div>';
       }
     };
     $("#bookSearchBtn").onclick=searchBooks;
