@@ -1829,7 +1829,7 @@
         window.gtag("event", name, {
           send_to:"G-FJZPY111P3",
           transport_type:"beacon",
-          app_version:"book-event-fix-v3",
+          app_version:"book-page-fix-v4",
           ...params
         });
       }catch(error){
@@ -2427,8 +2427,6 @@
       const previousStatus=i>=0 ? books[i].status : null;
       if(i>=0) books[i]=data; else books.unshift(data);
 
-      // 保存成功をlocalStorageへの書き込み完了で確定する。
-      // 画面再描画で問題が起きても、保存イベントが失われない順序にする。
       try{
         localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
       }catch(error){
@@ -2437,6 +2435,7 @@
         return;
       }
 
+      // 保存成功直後に送信。画面再描画やクラウド同期の成否に影響されない。
       trackYondaEvent(isNewBook ? "book_added" : "book_updated", {
         operation:isNewBook ? "create" : "update",
         status:data.status,
@@ -2456,8 +2455,6 @@
       }
 
       closeModal();
-
-      // 保存・計測が完了してから表示更新とクラウド同期を行う。
       try{
         renderAll();
       }catch(error){
@@ -2758,7 +2755,7 @@
         orderBy:"relevance",
         maxResults:"20",
         country:"JP",
-        projection:"lite"
+        projection:"full"
       });
 
       const data=await googleBooksJsonp(params);
@@ -2847,7 +2844,11 @@
     // 外部書誌APIでページ数が欠落する場合に備えた、ISBNで確認済みの補完値。
     // 同一ISBNの紙書籍にのみ適用し、電子版・別版には流用しない。
     const VERIFIED_PAGE_COUNTS={
-      "9784478025819":296
+      "9784478025819":296,
+      // 吉田修一『国宝 上 青春篇』
+      "9784022515650":351,
+      // 文庫版
+      "9784022650085":408
     };
 
     function getVerifiedPageCount(isbn){
@@ -2901,6 +2902,7 @@
       $("#author").value=d.author||"";
       $("#publisher").value=d.publisher||"";
       $("#pages").value=d.pages||"";
+      updatePageFieldNote();
       $("#tags").value=(d.tags||[]).join(", ");
       $("#coverUrl").value=d.coverUrl||"";
       $("#bookForm").dataset.searchMeta=JSON.stringify({isbn:d.isbn||"",publisher:d.publisher||"",source:d.source||"",sourceUrl:d.sourceUrl||""});
@@ -2916,6 +2918,7 @@
         const pageCount=await fetchOpenBdPageCount(d.isbn);
         if(pageCount>0){
           $("#pages").value=pageCount;
+          updatePageFieldNote();
           resultBox.innerHTML='<div class="note">選択した本の情報とページ数を反映しました。状態やメモを確認して保存してください。</div>';
         }else{
           resultBox.innerHTML='<div class="note">選択した本の情報を反映しました。ページ数は書誌データに登録されていないため不明です。必要に応じて手入力してください。</div>';
