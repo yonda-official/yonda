@@ -1320,7 +1320,7 @@
         </div>
         <div class="two">
           <label>ページ数
-            <input class="field" id="pages" type="number" min="0" inputmode="numeric" placeholder="例：320" />
+            <input class="field" id="pages" type="number" min="0" inputmode="numeric" placeholder="不明（必要に応じて入力）" />
           </label>
           <label>読了日
             <input class="field" id="finishedAt" type="date" />
@@ -2184,15 +2184,65 @@
         box.innerHTML='<div class="note">楽天ブックス検索に接続できませんでした。少し時間を置いて再検索するか、下の欄へ手入力してください。</div>';
       }
     }
+    function positivePageNumber(value){
+      const match=String(value??"").match(/\d{1,5}/);
+      const number=match?Number(match[0]):0;
+      return Number.isFinite(number)&&number>0&&number<10000?number:0;
+    }
+
     function findOpenBdPageCount(record){
       const extents=record?.onix?.DescriptiveDetail?.Extent;
       const list=Array.isArray(extents)?extents:(extents?[extents]:[]);
-      for(const extent of list){
-        const value=Number(String(extent?.ExtentValue??"").replace(/[^0-9]/g,""));
-        if(Number.isFinite(value)&&value>0) return value;
+
+      // ExtentType=00（本文ページ数）を優先し、それ以外のページ表記も補助的に確認
+      const ordered=[
+        ...list.filter(extent=>String(extent?.ExtentType??"")==="00"),
+        ...list.filter(extent=>String(extent?.ExtentType??"")!=="00")
+      ];
+      for(const extent of ordered){
+        const value=positivePageNumber(extent?.ExtentValue);
+        if(value) return value;
       }
-      const summaryPages=Number(record?.summary?.pages||record?.summary?.page||0);
-      return Number.isFinite(summaryPages)&&summaryPages>0?summaryPages:0;
+
+      const summaryCandidates=[
+        record?.summary?.pages,
+        record?.summary?.page,
+        record?.summary?.extent,
+        record?.hanmoto?.pages,
+        record?.hanmoto?.page
+      ];
+      for(const candidate of summaryCandidates){
+        const value=positivePageNumber(candidate);
+        if(value) return value;
+      }
+
+      // 書誌構造の差異に備え、ExtentValueを再帰的に探索
+      const stack=[record?.onix?.DescriptiveDetail];
+      while(stack.length){
+        const current=stack.pop();
+        if(!current||typeof current!=="object") continue;
+        if(Object.prototype.hasOwnProperty.call(current,"ExtentValue")){
+          const value=positivePageNumber(current.ExtentValue);
+          if(value) return value;
+        }
+        Object.values(current).forEach(value=>{
+          if(value&&typeof value==="object") stack.push(value);
+        });
+      }
+      return 0;
+    }
+
+    async function fetchGoogleBooksPageCountByIsbn(isbn){
+      try{
+        const items=await fetchGoogleBooks(String(isbn),false);
+        for(const item of items){
+          const pageCount=positivePageNumber(item?.volumeInfo?.pageCount);
+          if(pageCount) return pageCount;
+        }
+      }catch(error){
+        console.warn("Google Books page lookup failed",error);
+      }
+      return 0;
     }
 
     async function fetchOpenBdPageCount(isbn){
@@ -2202,16 +2252,20 @@
       const timer=setTimeout(()=>controller.abort(),8000);
       try{
         const response=await fetch(`https://api.openbd.jp/v1/get?isbn=${encodeURIComponent(normalized)}`,{signal:controller.signal});
-        if(!response.ok) return 0;
-        const data=await response.json();
-        const record=Array.isArray(data)?data[0]:null;
-        return record?findOpenBdPageCount(record):0;
+        if(response.ok){
+          const data=await response.json();
+          const record=Array.isArray(data)?data[0]:null;
+          const openBdPages=record?findOpenBdPageCount(record):0;
+          if(openBdPages) return openBdPages;
+        }
       }catch(error){
         console.warn("openBD page lookup failed",error);
-        return 0;
       }finally{
         clearTimeout(timer);
       }
+
+      // openBDにページ数がない場合のみ、無料のGoogle BooksをISBN検索で補完
+      return await fetchGoogleBooksPageCountByIsbn(normalized);
     }
 
     window.selectSearchResult=async(payload)=>{
@@ -2236,10 +2290,10 @@
           $("#pages").value=pageCount;
           resultBox.innerHTML='<div class="note">選択した本の情報とページ数を反映しました。状態やメモを確認して保存してください。</div>';
         }else{
-          resultBox.innerHTML='<div class="note">選択した本の情報を反映しました。ページ数は取得できなかったため、必要に応じて手入力してください。</div>';
+          resultBox.innerHTML='<div class="note">選択した本の情報を反映しました。ページ数は書誌データに登録されていないため不明です。必要に応じて手入力してください。</div>';
         }
       }else{
-        resultBox.innerHTML='<div class="note">選択した本の情報を反映しました。ページ数は取得できなかったため、必要に応じて手入力してください。</div>';
+        resultBox.innerHTML='<div class="note">選択した本の情報を反映しました。ページ数は書誌データに登録されていないため不明です。必要に応じて手入力してください。</div>';
       }
     };
     $("#bookSearchBtn").onclick=searchBooks;
