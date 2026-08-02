@@ -860,14 +860,34 @@
       border-radius:11px;
       background:#fff;
     }
-    .jp-date-display{
-      letter-spacing:.02em;
+    .finished-date-control{
+      position:relative;
+      display:block;
+      width:100%;
     }
-
+    .finished-date-display{
+      width:100%;
+      letter-spacing:.02em;
+      cursor:pointer;
+      padding-right:44px!important;
+    }
     .finished-date-picker{
-      margin-top:7px;
-      height:46px!important;
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%!important;
       min-height:46px!important;
+      opacity:0;
+      cursor:pointer;
+    }
+    .finished-date-control::after{
+      content:"📅";
+      position:absolute;
+      right:14px;
+      top:50%;
+      transform:translateY(-50%);
+      pointer-events:none;
+      font-size:.9rem;
     }
 
   
@@ -929,10 +949,6 @@
     #bookForm .page-field-wrap,
     #bookForm .finished-date-wrap{
       grid-template-rows:auto 46px!important;
-    }
-    #bookForm .jp-date-row select{
-      height:46px!important;
-      min-height:46px!important;
     }
 
     /* 設定画面のカード枠を明示 */
@@ -1008,23 +1024,6 @@
       .hero{padding:12px 14px;gap:8px;margin-bottom:10px;border-radius:22px}
       .hero h2{font-size:1.08rem;line-height:1.35}
       .hero p{margin-top:4px;font-size:.74rem;line-height:1.55}
-
-      /* 読了日の年月日をスマホ幅に収める */
-      #bookForm .jp-date-row{
-        grid-template-columns:minmax(0,1.45fr) minmax(0,.78fr) minmax(0,.78fr);
-        gap:5px;
-      }
-      #bookForm .jp-date-row select{
-        width:100%;
-        min-width:0!important;
-        padding-left:4px!important;
-        padding-right:22px!important;
-        font-size:.68rem!important;
-        letter-spacing:-.02em;
-      }
-      #bookForm .finished-date-picker{
-        font-size:.76rem;
-      }
 
       .spine{
         display:flex;
@@ -1764,14 +1763,11 @@
             <input class="field" id="pages" type="number" min="0" inputmode="numeric" placeholder="不明" />
           </label>
           <label class="finished-date-wrap">読了日
-            <input class="field jp-date-display" id="finishedAtDisplay" type="text" inputmode="numeric" placeholder="yyyy/mm/dd" maxlength="10" />
-            <input class="field finished-date-picker" id="finishedAtPicker" type="date" aria-label="カレンダーから読了日を選択" />
-            <input id="finishedAt" type="hidden" />
-            <span class="jp-date-row" aria-label="読了日の補助選択">
-              <select id="finishedYearAssist" aria-label="読了年"></select>
-              <select id="finishedMonthAssist" aria-label="読了月"></select>
-              <select id="finishedDayAssist" aria-label="読了日"></select>
+            <span class="finished-date-control">
+              <input class="field finished-date-display" id="finishedAtDisplay" type="text" placeholder="yyyy/mm/dd" readonly aria-label="読了日" />
+              <input class="finished-date-picker" id="finishedAtPicker" type="date" lang="ja-JP" aria-label="カレンダーから読了日を選択" />
             </span>
+            <input id="finishedAt" type="hidden" />
           </label>
         </div>
         <label>ジャンル・タグ
@@ -2353,38 +2349,14 @@
       const hidden=$("#finishedAt");
       const display=$("#finishedAtDisplay");
       const picker=$("#finishedAtPicker");
-      if(!hidden||!display||display.dataset.bound==="1") return;
-      display.dataset.bound="1";
-
-      display.addEventListener("input",()=>{
-        let digits=display.value.replace(/\D/g,"").slice(0,8);
-        if(digits.length>4) digits=digits.slice(0,4)+"/"+digits.slice(4);
-        if(digits.length>7) digits=digits.slice(0,7)+"/"+digits.slice(7);
-        display.value=digits;
-      });
-
-      display.addEventListener("change",()=>{
-        const iso=japaneseDateToIso(display.value);
-        if(display.value && !iso){
-          alert("日付は yyyy/mm/dd 形式で入力してください。");
-          display.focus();
-          return;
-        }
-        hidden.value=iso;
+      if(!hidden||!display||!picker||picker.dataset.bound==="1") return;
+      picker.dataset.bound="1";
+      picker.addEventListener("change",()=>{
+        hidden.value=picker.value||"";
         markBookAsFinishedWhenDateExists();
         hidden.dispatchEvent(new Event("change",{bubbles:true}));
         syncJapaneseFinishedDateDisplay();
       });
-
-      if(picker && picker.dataset.bound!=="1"){
-        picker.dataset.bound="1";
-        picker.addEventListener("change",()=>{
-          hidden.value=picker.value||"";
-          markBookAsFinishedWhenDateExists();
-          hidden.dispatchEvent(new Event("change",{bubbles:true}));
-          syncJapaneseFinishedDateDisplay();
-        });
-      }
     }
 
     function updatePageFieldNote(){
@@ -2393,68 +2365,6 @@
       if(!pages||!note) return;
       const hasPages=Number(pages.value)>0;
       note.hidden=hasPages;
-    }
-
-    function buildFinishedDateAssist(){
-      const year=$("#finishedYearAssist");
-      const month=$("#finishedMonthAssist");
-      const day=$("#finishedDayAssist");
-      const input=$("#finishedAt");
-      if(!year||!month||!day||!input) return;
-
-      const current=new Date().getFullYear();
-      const pastYears=[];
-      for(let y=current;y>=1950;y--) pastYears.push(y);
-      const futureYears=[];
-      for(let y=current+1;y<=current+20;y++) futureYears.push(y);
-
-      year.innerHTML=
-        `<option value="">年を選択</option>`+
-        pastYears.map(y=>`<option value="${y}">${y}年</option>`).join("")+
-        `<option disabled>── 未来 ──</option>`+
-        futureYears.map(y=>`<option value="${y}">${y}年</option>`).join("");
-
-      month.innerHTML=`<option value="">月</option>`+
-        Array.from({length:12},(_,i)=>`<option value="${String(i+1).padStart(2,"0")}">${i+1}月</option>`).join("");
-
-      function rebuildDays(){
-        const y=Number(year.value);
-        const m=Number(month.value);
-        const previous=day.value;
-        const count=y&&m ? new Date(y,m,0).getDate() : 31;
-        day.innerHTML=`<option value="">日</option>`+
-          Array.from({length:count},(_,i)=>`<option value="${String(i+1).padStart(2,"0")}">${i+1}日</option>`).join("");
-        if([...day.options].some(o=>o.value===previous)) day.value=previous;
-      }
-
-      function syncToInput(){
-        if(year.value&&month.value&&day.value){
-          input.value=`${year.value}-${month.value}-${day.value}`;
-          markBookAsFinishedWhenDateExists();
-          input.dispatchEvent(new Event("change",{bubbles:true}));
-          syncJapaneseFinishedDateDisplay();
-        }
-      }
-
-      function syncFromInput(){
-        const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(input.value||"");
-        if(!match){
-          year.value="";month.value="";rebuildDays();day.value="";
-          return;
-        }
-        year.value=match[1];
-        month.value=match[2];
-        rebuildDays();
-        day.value=match[3];
-      }
-
-      year.addEventListener("change",()=>{rebuildDays();syncToInput();});
-      month.addEventListener("change",()=>{rebuildDays();syncToInput();});
-      day.addEventListener("change",syncToInput);
-      input.addEventListener("change",()=>{syncFromInput();syncJapaneseFinishedDateDisplay();});
-
-      rebuildDays();
-      syncFromInput();
     }
 
     function renderAll(){ renderBooks();renderStats();renderDashboard();renderAnalysis();renderPlan(); }
@@ -2470,8 +2380,9 @@
       $("#rating").value=book?.rating||0;
       $("#pages").value=book?.pages||"";
       $("#finishedAt").value=book?.finishedAt||"";
+      $("#finishedAtPicker").lang="ja-JP";
       $("#finishedAtPicker").value=book?.finishedAt||"";
-      setTimeout(()=>{buildFinishedDateAssist();bindJapaneseFinishedDateInput();syncJapaneseFinishedDateDisplay();updatePageFieldNote();},0);
+      setTimeout(()=>{bindJapaneseFinishedDateInput();syncJapaneseFinishedDateDisplay();updatePageFieldNote();},0);
       $("#tags").value=(book?.tags||[]).join(", ");
       $("#memo").value=book?.memo||"";
       $("#quote").value=book?.quote||"";
