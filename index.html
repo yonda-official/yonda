@@ -386,9 +386,12 @@
     }
     .reorder-handle:active{cursor:grabbing;background:rgba(231,239,226,.86);color:var(--accent)}
     .reorder-spine-title{
-      min-width:0;padding:9px 7px 10px;display:flex;align-items:center;justify-content:flex-start;
-      writing-mode:vertical-rl;text-orientation:mixed;overflow:hidden;color:#2f281f;
+      position:absolute;top:51px;left:50%;transform:translateX(-50%);
+      width:max-content;max-width:calc(100% - 12px);height:calc(100% - 61px);
+      padding:0;display:block;overflow:hidden;
+      writing-mode:vertical-rl;text-orientation:mixed;color:#2f281f;
       font-size:.72rem;font-weight:700;line-height:1.12;letter-spacing:.02em;text-align:start;
+      user-select:none;-webkit-user-select:none;pointer-events:none;
     }
     .reorder-spine-title.title-medium{font-size:.64rem}
     .reorder-spine-title.title-long{font-size:.56rem;line-height:1.06;letter-spacing:0}
@@ -401,7 +404,7 @@
       .reorder-strip{min-height:270px;padding:14px 10px 32px;gap:4px}
       .reorder-card{flex-basis:48px;height:224px;grid-template-rows:40px minmax(0,1fr)}
       .reorder-handle{height:40px}
-      .reorder-spine-title{font-size:.66rem;padding-left:6px;padding-right:6px}
+      .reorder-spine-title{top:49px;max-width:calc(100% - 10px);height:calc(100% - 57px);font-size:.66rem}
       .reorder-spine-title.title-medium{font-size:.59rem}
       .reorder-spine-title.title-long{font-size:.52rem}
       .reorder-spine-title.title-xlong{font-size:.46rem}
