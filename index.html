@@ -986,13 +986,29 @@
       .settings-button{font-size:1.05rem}
       .header-add-button{font-size:1.38rem}
 
-      .hero{padding:12px 14px;gap:8px;margin-bottom:14px;border-radius:22px}
+      .hero{padding:12px 14px;gap:8px;margin-bottom:10px;border-radius:22px}
       .hero h2{font-size:1.08rem;line-height:1.35}
       .hero p{margin-top:4px;font-size:.74rem;line-height:1.55}
+      .spine{
+        display:flex;
+        align-items:center;
+      }
       .spine-title{
-        position:relative;
-        left:50%;
-        transform:translateX(calc(-50% + 1px));
+        position:static;
+        left:auto;
+        transform:none;
+        max-width:100%;
+      }
+
+      /* ホーム・ダッシュボード・AI分析の余白を同じ基準に統一 */
+      #homeSection .layout,
+      #statsSection .layout{
+        gap:10px;
+      }
+      #homeSection .section-ad,
+      #statsSection .section-ad,
+      #aiSection .section-ad{
+        margin-top:10px;
       }
 
       .panel{padding:15px}
