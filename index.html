@@ -1192,6 +1192,7 @@
               <h3>本棚</h3>
               <span class="tiny" id="shelfPreviewCount">最初の10冊を表示</span>
             </div>
+            <button class="secondary" type="button" id="openReorderModalHome">本の並び替え</button>
           </div>
           <div class="search-row">
             <input id="searchInput" class="field" placeholder="タイトル・著者・タグで検索" />
@@ -2787,6 +2788,7 @@
     }
     $("#showAllBooksBtn").onclick=openAllBooksModal;
     $("#closeAllBooksModal").onclick=closeAllBooksModal;
+    $("#openReorderModalHome").onclick=openReorderModal;
     $("#openReorderModal").onclick=openReorderModal;
     $("#closeReorderModal").onclick=closeReorderModal;
     $("#allBooksModal").addEventListener("click",e=>{
