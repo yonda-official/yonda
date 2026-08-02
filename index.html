@@ -1796,6 +1796,16 @@
     const $ = s => document.querySelector(s);
     const $$ = s => [...document.querySelectorAll(s)];
 
+    // Google Analytics: 処理成功後のみイベントを送信する
+    function trackYondaEvent(name, params = {}){
+      if(typeof window.gtag !== "function") return;
+      try{
+        window.gtag("event", name, params);
+      }catch(error){
+        console.warn("Yonda Analytics event error:", error);
+      }
+    }
+
     function save(){
       localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
       renderAll();
@@ -2439,13 +2449,32 @@
       };
       if(data.status==="done" && !data.finishedAt) data.finishedAt=new Date().toISOString().slice(0,10);
       const i=books.findIndex(b=>b.id===data.id);
+      const isNewBook=i<0;
+      const previousStatus=i>=0 ? books[i].status : null;
       if(i>=0) books[i]=data; else books.unshift(data);
-      save();closeModal();
+      save();
+      closeModal();
+
+      trackYondaEvent(isNewBook ? "book_added" : "book_updated", {
+        status:data.status,
+        has_isbn:Boolean(data.isbn),
+        source:data.source || "manual"
+      });
+      if(data.status==="done" && previousStatus!=="done"){
+        trackYondaEvent("book_finished", {
+          source:data.source || "manual"
+        });
+      }
     });
 
     $("#deleteBtn").addEventListener("click",()=>{
       if(!currentEditId) return;
-      if(confirm("この本を削除しますか？")){ books=books.filter(b=>b.id!==currentEditId);save();closeModal(); }
+      if(confirm("この本を削除しますか？")){
+        books=books.filter(b=>b.id!==currentEditId);
+        save();
+        closeModal();
+        trackYondaEvent("book_deleted");
+      }
     });
     function renderGenreSettings(){
       $("#genreList").innerHTML=genres.map(g=>`
@@ -2550,6 +2579,7 @@
       ]);
       const csv="\ufeff"+[header,...rows].map(r=>r.map(esc).join(",")).join("\r\n");
       downloadBlob(csv,"text/csv;charset=utf-8",`yonda-${new Date().toISOString().slice(0,10)}.csv`);
+      trackYondaEvent("export_csv", {book_count:books.length});
     };
     $("#jsonExportBtn").onclick=()=>{
       downloadBlob(JSON.stringify({
@@ -2558,6 +2588,7 @@
         genres,
         monthlyGoal
       },null,2),"application/json",`yonda-${new Date().toISOString().slice(0,10)}.json`);
+      trackYondaEvent("export_json", {book_count:books.length});
     };
     $("#jsonImportBtn").onclick=()=>$("#jsonImportInput").click();
     $("#jsonImportInput").addEventListener("change",async event=>{
@@ -2580,6 +2611,7 @@
         renderAll();
         renderGenreSettings();
         scheduleCloudSync();
+        trackYondaEvent("import_json", {book_count:books.length});
         alert("JSONファイルからデータを復元しました。");
       }catch(error){
         console.error(error);
@@ -2987,7 +3019,12 @@
     $("#settingsSignupBtn").onclick=()=>{setAuthMode("signup");openAuthModal();};
     $("#settingsAuthBtn").onclick=async()=>{
       if(currentUser&&supabaseClient){
-        await supabaseClient.auth.signOut();
+        const {error:signOutError}=await supabaseClient.auth.signOut();
+        if(signOutError){
+          alert("ログアウトできませんでした。通信状態を確認してください。");
+          return;
+        }
+        trackYondaEvent("logout");
         currentUser=null;
         books=[];
         localStorage.setItem(STORAGE_KEY,'[]');
@@ -3009,7 +3046,15 @@
       const result=authMode==="login"?await supabaseClient.auth.signInWithPassword({email,password}):await supabaseClient.auth.signUp({email,password,options:{emailRedirectTo:location.href.split('#')[0]}});
       $("#authSubmitBtn").disabled=false;
       if(result.error){message.textContent=localizeAuthError(result.error);message.classList.add("error");return;}
-      if(authMode==="signup"&&!result.data.session){message.textContent="「Supabase Auth」からYonda?の確認メールを送りました。メール本文内の確認リンクを開いて登録を完了してください。";return;}
+      if(authMode==="signup"){
+        trackYondaEvent("sign_up", {method:"email"});
+        if(!result.data.session){
+          message.textContent="「Supabase Auth」からYonda?の確認メールを送りました。メール本文内の確認リンクを開いて登録を完了してください。";
+          return;
+        }
+      }else{
+        trackYondaEvent("login", {method:"email"});
+      }
       message.textContent="ログインしました。端末内のデータをクラウドへ同期します。";
       setTimeout(closeAuthModal,500);
     });
@@ -3196,6 +3241,9 @@
         await prefillContactEmail();
         contactStatus.classList.add("success");
         contactStatus.textContent = result.message || "お問い合わせを受け付けました。";
+        trackYondaEvent("contact_submit", {
+          category:payload.category || "other"
+        });
       }catch(error){
         console.error("Contact form error:", error);
         contactStatus.classList.add("error");
@@ -3265,34 +3313,6 @@
       }
     }, true);
 
-</script>
-
-<script>
-(function(){
-  if(typeof gtag !== 'function') return;
-
-  window.trackYondaEvent = function(name, params){
-    try{ gtag('event', name, params || {}); }catch(e){}
-  };
-
-  document.addEventListener('submit', function(e){
-    const id = e.target && e.target.id ? e.target.id : '';
-    if(id === 'contactForm') trackYondaEvent('contact_submit');
-    if(id === 'bookForm') trackYondaEvent('book_added');
-  }, true);
-
-  document.addEventListener('click', function(e){
-    const t = e.target.closest('button');
-    if(!t) return;
-    const txt = (t.textContent || '').trim();
-
-    if(txt.includes('ログイン')) trackYondaEvent('login');
-    if(txt.includes('新規登録')) trackYondaEvent('signup');
-    if(txt.includes('追加')) trackYondaEvent('book_add_click');
-    if(txt.includes('エクスポート') || txt.includes('CSV')) trackYondaEvent('export_csv');
-    if(txt.includes('JSON')) trackYondaEvent('export_json');
-  }, true);
-})();
 </script>
 
 </body>
