@@ -1494,7 +1494,7 @@
       </div>
       <div class="auth-mail-notice" id="authMailNotice">
         <strong>確認メールについて</strong><br>
-        新規登録後、送信者名「Supabase Auth」から英語の確認メールが届きます。Yonda?の登録確認メールですので、本文内の確認リンクを開いてください。
+        新規登録後、送信者名「Supabase Auth」から確認メールが届きます。Yonda?の登録確認メールですので、本文内の確認リンクを開いてください。
       </div>
       <form id="authForm" class="form-grid">
         <label>メールアドレス<input class="field" id="authEmail" type="email" autocomplete="email" required placeholder="example@email.com"></label>
@@ -2893,7 +2893,7 @@
       const result=authMode==="login"?await supabaseClient.auth.signInWithPassword({email,password}):await supabaseClient.auth.signUp({email,password,options:{emailRedirectTo:location.href.split('#')[0]}});
       $("#authSubmitBtn").disabled=false;
       if(result.error){message.textContent=localizeAuthError(result.error);message.classList.add("error");return;}
-      if(authMode==="signup"&&!result.data.session){message.textContent="「Supabase Auth」からYonda?の確認メールを送りました。英語のメール本文内にある確認リンクを開いて登録を完了してください。";return;}
+      if(authMode==="signup"&&!result.data.session){message.textContent="「Supabase Auth」からYonda?の確認メールを送りました。メール本文内の確認リンクを開いて登録を完了してください。";return;}
       message.textContent="ログインしました。端末内のデータをクラウドへ同期します。";
       setTimeout(closeAuthModal,500);
     });
@@ -3091,6 +3091,64 @@
     });
 
     prefillContactEmail();
+
+    // ブラウザ標準の英語バリデーション表示を使わず、一般ユーザー向けの案内を日本語に統一します。
+    function japaneseValidationMessage(field){
+      const labelText = field.closest("label")?.childNodes?.[0]?.textContent?.trim() || "この項目";
+
+      if(field.validity.valueMissing){
+        if(field.type === "email") return "メールアドレスを入力してください。";
+        if(field.type === "password") return "パスワードを入力してください。";
+        if(field.tagName === "SELECT") return `${labelText}を選択してください。`;
+        return `${labelText}を入力してください。`;
+      }
+      if(field.validity.typeMismatch && field.type === "email"){
+        return "メールアドレスの形式が正しくありません。";
+      }
+      if(field.validity.tooShort){
+        const minimum = field.getAttribute("minlength") || "必要な";
+        if(field.type === "password") return `パスワードは${minimum}文字以上で入力してください。`;
+        return `${labelText}は${minimum}文字以上で入力してください。`;
+      }
+      if(field.validity.tooLong){
+        const maximum = field.getAttribute("maxlength") || "指定された";
+        return `${labelText}は${maximum}文字以内で入力してください。`;
+      }
+      if(field.validity.patternMismatch){
+        return `${labelText}の入力内容を確認してください。`;
+      }
+      if(field.validity.rangeUnderflow){
+        return `${labelText}は${field.min}以上で入力してください。`;
+      }
+      if(field.validity.rangeOverflow){
+        return `${labelText}は${field.max}以下で入力してください。`;
+      }
+      if(field.validity.stepMismatch){
+        return `${labelText}の入力値を確認してください。`;
+      }
+      return "入力内容を確認してください。";
+    }
+
+    document.addEventListener("invalid", event => {
+      const field = event.target;
+      if(!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement)) return;
+      field.setCustomValidity(japaneseValidationMessage(field));
+    }, true);
+
+    document.addEventListener("input", event => {
+      const field = event.target;
+      if(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement){
+        field.setCustomValidity("");
+      }
+    }, true);
+
+    document.addEventListener("change", event => {
+      const field = event.target;
+      if(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement){
+        field.setCustomValidity("");
+      }
+    }, true);
+
 </script>
 </body>
 </html>
