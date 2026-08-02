@@ -889,6 +889,71 @@
       gap:12px;
     }
 
+
+    /* 入力欄の高さを「ジャンル・タグ」欄に統一 */
+    #bookForm .field,
+    #bookForm select,
+    #bookForm .page-field-wrap .field,
+    #bookForm .finished-date-wrap .field{
+      height:46px!important;
+      min-height:46px!important;
+      padding-top:0!important;
+      padding-bottom:0!important;
+    }
+    #bookForm .page-field-wrap,
+    #bookForm .finished-date-wrap{
+      grid-template-rows:auto 46px!important;
+    }
+    #bookForm .jp-date-row select{
+      height:46px!important;
+      min-height:46px!important;
+    }
+
+    /* 設定画面のカード枠を明示 */
+    #settingsModal .legal-details{
+      border:1px solid var(--line)!important;
+      border-radius:18px!important;
+      background:#fff!important;
+    }
+
+    /* アカウント操作ボタンとLiteバッジの位置調整 */
+    .account-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end}
+    #settingsModal .account-status{align-items:center}
+    #settingsModal .account-status > .plan-chip{flex:none;align-self:center;margin:0;line-height:1}
+    @media(max-width:620px){
+      .account-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}
+      .account-actions button{width:100%}
+    }
+
+    /* Liteバッジの枠と文字を正確に中央揃え */
+    .plan-chip,
+    #settingsModal .account-status > .plan-chip{
+      box-sizing:border-box;
+      display:inline-grid;
+      place-items:center;
+      min-width:48px;
+      height:28px;
+      padding:0 10px;
+      margin:0;
+      line-height:1;
+      vertical-align:middle;
+    }
+
+    /* 本の登録フォーム内のラベル・入力文字を統一 */
+    #bookForm label{
+      font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","YuGothic","Meiryo",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      font-size:.78rem;
+      font-weight:400;
+      line-height:1.4;
+      color:var(--muted);
+    }
+    #bookForm input,
+    #bookForm select,
+    #bookForm textarea{
+      font-family:inherit;
+      font-weight:400;
+    }
+
   </style>
 </head>
 <body>
@@ -1139,29 +1204,27 @@
       </div>
 
       <div class="settings-sections">
-        <p class="note">以下は正式公開を想定したひな型です。運営者情報、利用サービス、保存先、料金・解約条件が確定した段階で最終調整してください。</p>
-
         <section class="settings-card">
-          <h4>アカウントとデータ保存</h4>
+          <h4>アカウント</h4>
           <div class="account-status">
             <div><strong id="accountStatusTitle">未ログイン</strong><span id="accountStatusText">読書データはこの端末のブラウザ内に保存されています。</span></div>
-            <button class="primary" type="button" id="settingsAuthBtn">ログイン</button>
+            <div class="account-actions">
+              <button class="primary" type="button" id="settingsSignupBtn">新規登録</button>
+              <button class="secondary" type="button" id="settingsAuthBtn">ログイン</button>
+            </div>
           </div>
           <p class="note" style="margin-top:10px">ログインすると読書データがクラウドに保存され、PCとiPhoneで同じ本棚を利用できます。未ログインでも引き続き利用できます。</p>
         </section>
 
         <section class="settings-card">
-          <h4>ユーザー情報</h4>
-          <label>表示名
-            <input class="field" id="userName" placeholder="例：しょうた" />
-          </label>
-          <label>メールアドレス
-            <input class="field" id="userEmail" type="email" placeholder="example@email.com" />
-          </label>
-          <label>利用プラン
-            <input class="field" value="Liteプラン（Proは開発中）" disabled />
-          </label>
-          <button class="secondary" id="saveProfileBtn">ユーザー情報を保存</button>
+          <h4>利用プラン</h4>
+<div class="account-status">
+            <div>
+              <strong>Liteプラン（無料）</strong>
+              <span>現在ご利用中のプランです。Proプランは開発中です。</span>
+            </div>
+            <span class="plan-chip lite" aria-label="現在の利用プラン">Lite</span>
+          </div>
         </section>
 
         <section class="settings-card">
@@ -1174,17 +1237,32 @@
           <div class="genre-list" id="genreList"></div>
         </section>
 
-<section class="settings-card">
-          <h4>読書データの保存・出力</h4>
-          <p class="note">端末変更やバックアップに備えて、定期的なデータ保存をおすすめします。</p>
+        <section class="settings-card">
+          <h4>データ管理</h4>
+          <p class="note">端末変更や万一のデータ消失に備えて、定期的なバックアップをおすすめします。</p>
           <div class="settings-actions">
-            <button class="secondary" id="csvExportBtn">CSVでダウンロード</button>
-            <button class="secondary" id="jsonExportBtn">JSONでバックアップ</button>
+            <button class="secondary" id="jsonExportBtn" type="button">JSON出力</button>
+            <button class="secondary" id="jsonImportBtn" type="button">JSON復元</button>
+            <button class="secondary" id="csvExportBtn" type="button">CSV出力</button>
           </div>
+          <input id="jsonImportInput" type="file" accept="application/json,.json" hidden />
         </section>
 
+        <details class="settings-card legal-details">
+          <summary>利用サービス</summary>
+          <div class="legal-content">
+            <p class="legal-text"><strong>Supabase</strong><br>アカウント認証とクラウド上の読書データ同期に利用します。</p>
+            <p class="legal-text"><strong>楽天ウェブサービス（楽天ブックス）</strong><br>タイトル・著者名・ISBNから書籍情報を検索し、本の登録内容を自動入力するために利用します。</p>
+            <p class="legal-text"><strong>openBD・Google Books</strong><br>ISBNからページ数などの書誌情報を補完するために利用します。</p>
+          </div>
+        </details>
 
-
+        <details class="settings-card legal-details">
+          <summary>プランの解約</summary>
+          <div class="legal-content">
+            <p class="legal-text"><strong>Liteプラン</strong><br>無料のため、解約手続きや料金はありません。利用を終了する場合は、必要に応じてアカウントを削除できます。</p>
+          </div>
+        </details>
 
         <details class="settings-card legal-details">
           <summary>プライバシーポリシー</summary>
@@ -1234,9 +1312,6 @@
             未成年者が利用する場合、必要に応じて親権者等の法定代理人の同意を得てください。</p>
             <p class="legal-text"><strong>13. 改定</strong><br>
             本方針を改定する場合は、重要性に応じて本サービス上の表示、電子メールその他適切な方法で通知します。</p>
-            <p class="legal-text"><strong>14. 事業者・問い合わせ窓口</strong><br>
-            正式公開前に、運営者名、バーチャルオフィスの所在地、問い合わせ用電話番号、問い合わせ用メールアドレス、
-            開示請求窓口を記載してください。</p>
 
           </div>
         </details>
@@ -2234,9 +2309,6 @@
       $("#tags").value=current.join(", ");
     };
     function openSettings(){
-      const profile=JSON.parse(localStorage.getItem(PROFILE_KEY)||'{}');
-      $("#userName").value=profile.name||"";
-      $("#userEmail").value=profile.email||"";
       renderGenreSettings();
       $("#settingsModal").classList.add("open");
       $("#settingsModal").setAttribute("aria-hidden","false");
@@ -2263,18 +2335,6 @@
     $("#settingsBtn").addEventListener("click",openSettings);
     $("#closeSettings").onclick=closeSettings;
     $("#settingsModal").addEventListener("click",e=>{if(e.target.id==="settingsModal")closeSettings()});
-    $("#saveProfileBtn").onclick=()=>{
-      localStorage.setItem(PROFILE_KEY,JSON.stringify({
-        name:$("#userName").value.trim(),
-        email:$("#userEmail").value.trim(),
-        plan:"lite"
-      }));
-      scheduleCloudSync();
-      localStorage.removeItem(ANALYSIS_CACHE_KEY);
-      renderAnalysis();
-      renderPlan();
-      alert("プロフィールを保存しました。");
-    };
     function openPlanModal(){
       $("#planModal").classList.add("open");
       $("#planModal").setAttribute("aria-hidden","false");
@@ -2330,9 +2390,42 @@
       downloadBlob(csv,"text/csv;charset=utf-8",`yonda-${new Date().toISOString().slice(0,10)}.csv`);
     };
     $("#jsonExportBtn").onclick=()=>{
-      downloadBlob(JSON.stringify({exportedAt:new Date().toISOString(),books},null,2),
-        "application/json",`yonda-backup-${new Date().toISOString().slice(0,10)}.json`);
+      downloadBlob(JSON.stringify({
+        exportedAt:new Date().toISOString(),
+        books,
+        genres,
+        monthlyGoal
+      },null,2),"application/json",`yonda-${new Date().toISOString().slice(0,10)}.json`);
     };
+    $("#jsonImportBtn").onclick=()=>$("#jsonImportInput").click();
+    $("#jsonImportInput").addEventListener("change",async event=>{
+      const file=event.target.files?.[0];
+      if(!file) return;
+      try{
+        const data=JSON.parse(await file.text());
+        if(!data || !Array.isArray(data.books)) throw new Error("invalid backup");
+        if(!confirm(`バックアップから${data.books.length}冊を復元します。現在の本棚データは置き換えられます。よろしいですか？`)) return;
+        books=data.books;
+        if(Array.isArray(data.genres)){
+          genres=data.genres;
+          localStorage.setItem(GENRES_KEY,JSON.stringify(genres));
+        }
+        if(Number.isFinite(Number(data.monthlyGoal))){
+          monthlyGoal=Number(data.monthlyGoal);
+          localStorage.setItem(GOAL_KEY,String(monthlyGoal));
+        }
+        localStorage.setItem(STORAGE_KEY,JSON.stringify(books));
+        renderAll();
+        renderGenreSettings();
+        scheduleCloudSync();
+        alert("JSONファイルからデータを復元しました。");
+      }catch(error){
+        console.error(error);
+        alert("復元できませんでした。Yonda?で出力したJSONファイルを選択してください。");
+      }finally{
+        event.target.value="";
+      }
+    });
 
     $("#addBtn").onclick=()=>openModal();
     $("#closeModal").onclick=closeModal;
@@ -2709,6 +2802,7 @@
       $("#accountStatusTitle").textContent=logged?"ログイン済み":"未ログイン";
       $("#accountStatusText").textContent=logged?`${currentUser.email||"ログイン中"}・クラウド同期有効`:"読書データはこの端末のブラウザ内に保存されています。";
       $("#settingsAuthBtn").textContent=logged?"ログアウト":"ログイン";
+      $("#settingsSignupBtn").hidden=logged;
     }
     async function initAuth(){
       if(!CLOUD_ENABLED){updateAccountUI();return;}
@@ -2728,6 +2822,7 @@
     }
     $("#openAuthBtn").onclick=()=>{setAuthMode("signup");openAuthModal();};
     $("#openLoginBtn").onclick=()=>{setAuthMode("login");openAuthModal();};
+    $("#settingsSignupBtn").onclick=()=>{setAuthMode("signup");openAuthModal();};
     $("#settingsAuthBtn").onclick=async()=>{
       if(currentUser&&supabaseClient){
         await supabaseClient.auth.signOut();
@@ -2736,7 +2831,7 @@
         localStorage.setItem(STORAGE_KEY,'[]');
         updateAccountUI();
         renderAll();
-      }else openAuthModal();
+      }else {setAuthMode("login");openAuthModal();}
     };
     $("#closeAuthModal").onclick=closeAuthModal;
     $("#continueGuestBtn").onclick=closeAuthModal;
