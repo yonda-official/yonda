@@ -352,22 +352,15 @@
       .shelf-empty-guide{font-size:.67rem}
     }
     .shelf-count{font-size:.7rem;color:var(--muted)}
-    .shelf-reorder-controls{display:flex;align-items:center;gap:8px}
-    .shelf-reorder-toggle{padding:7px 11px;font-size:.7rem;white-space:nowrap}
-    .shelf-reorder-toggle.active{background:var(--accent);border-color:var(--accent);color:#fff}
     .shelf-reorder-hint{display:block;margin-top:3px}
-    .bookshelf-full .spine-wrap{user-select:none;-webkit-user-select:none}
-    .bookshelf-full.reorder-mode .spine-wrap{
-      touch-action:none;
-      cursor:grab;
-    }
+    .bookshelf-full .spine-wrap{touch-action:pan-y;user-select:none;-webkit-user-select:none}
     .bookshelf-full .spine-wrap.reorder-dragging{
       opacity:.55;
-      transform:scale(1.05);
+      transform:scale(1.04);
       z-index:12;
     }
     .bookshelf-full.reorder-active{cursor:grabbing}
-    .bookshelf-full.reorder-mode .spine{pointer-events:none}
+    .bookshelf-full.reorder-active .spine{pointer-events:none}
     /* スマホ版の本棚指定を最終表示値に統合 */
     @media(max-width:620px){
       .bookshelf{
@@ -594,12 +587,6 @@
       border-radius:18px;padding:14px;margin-bottom:14px;
     }
     .book-search-results{display:grid;gap:8px;margin-top:10px;max-height:260px;overflow:auto}
-    .page-diagnostic{
-      margin-top:12px;border:1px dashed #cbbfae;border-radius:14px;
-      background:#fffaf2;padding:11px 12px;font-size:.68rem;line-height:1.65;
-      color:#62584c;white-space:pre-wrap;word-break:break-word;
-    }
-    .page-diagnostic[hidden]{display:none!important}
     .search-result{
       display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;
       background:#fff;border:1px solid var(--line);border-radius:14px;padding:9px;text-align:left;
@@ -1366,11 +1353,8 @@
       <div class="sheet-head">
         <div>
           <h3>あなたの本棚</h3>
-          <div class="shelf-reorder-controls">
-            <span class="tiny" id="allBooksCount"></span>
-            <button type="button" class="secondary shelf-reorder-toggle" id="shelfReorderToggle">並べ替え</button>
-          </div>
-          <span class="tiny shelf-reorder-hint" id="shelfReorderHint">「並べ替え」を押すと本を移動できます</span>
+          <span class="tiny" id="allBooksCount"></span>
+          <span class="tiny shelf-reorder-hint" id="shelfReorderHint">本を長押しして移動できます</span>
         </div>
         <button class="ghost" id="closeAllBooksModal">閉じる</button>
       </div>
@@ -1754,7 +1738,6 @@
           </label>
           <div class="note" style="margin-top:8px">候補を選ぶと、タイトル・著者・ページ数・タグ・表紙情報を自動入力します。</div>
           <div class="book-search-results" id="bookSearchResults"></div>
-          <div class="page-diagnostic" id="pageDiagnostic" hidden></div>
         </div>
         <input type="hidden" id="bookId" />
         <input type="hidden" id="coverUrl" />
@@ -1861,7 +1844,7 @@
       const eventParams={
         send_to:"G-FJZPY111P3",
         transport_type:"beacon",
-        app_version:"page-diagnostic-auth-fix-v10",
+        app_version:"shelf-order-page-fix-v7",
         ...params
       };
       try{
@@ -1881,7 +1864,7 @@
 
     // 公開中のHTMLが最新版かをGA4で確認する診断イベント。
     window.addEventListener("load",()=>{
-      trackYondaEvent("yonda_build_loaded", {build:"page-diagnostic-auth-fix-v10"});
+      trackYondaEvent("yonda_build_loaded", {build:"shelf-order-page-fix-v7"});
     },{once:true});
 
     let analyticsKnownBookIds=new Set(books.map(book=>String(book?.id||"")).filter(Boolean));
@@ -2145,7 +2128,7 @@
     function bookSpineHtml(b){
       return `<div class="spine-wrap" data-book-id="${escapeHtml(b.id)}">
         <button class="spine"
-          onclick="if(!window.__yondaReorderMode) editBook('${b.id}')"
+          onclick="editBook('${b.id}')"
           title="${escapeHtml(b.title)}"
           style="width:36px;height:172px;background-color:${BOOK_PAPER_COLOR};color:${BOOK_TEXT_COLOR}">
           <span class="spine-title ${titleSizeClass(b.title)}">${escapeHtml(b.title)}</span>
@@ -2194,14 +2177,10 @@
         : `<div class="shelf-row"><div class="shelf-empty">表示できる本がありません。</div></div>`;
 
       const canReorder=currentFilter==="all"&&!$("#searchInput").value.trim();
-      const toggle=$("#shelfReorderToggle");
-      toggle.disabled=!canReorder;
-      if(!canReorder) setShelfReorderMode(false);
-      $("#shelfReorderHint").textContent=!canReorder
-        ? "並べ替えは「すべて」かつ検索なしで利用できます"
-        : window.__yondaReorderMode
-          ? "本をそのままドラッグしてください。完了後に「並べ替え終了」を押します"
-          : "「並べ替え」を押すと本を移動できます";
+      $("#allBookList").dataset.reorderEnabled=canReorder?"1":"0";
+      $("#shelfReorderHint").textContent=canReorder
+        ? "本を長押しして移動できます（PCはドラッグでも操作できます）"
+        : "並べ替えは「すべて」かつ検索なしで利用できます";
       bindShelfReorder();
     }
 
@@ -2227,83 +2206,410 @@
       renderAllBookshelf();
     }
 
-    window.__yondaReorderMode=false;
-
-    function setShelfReorderMode(enabled){
-      window.__yondaReorderMode=Boolean(enabled);
-      const container=$("#allBookList");
-      const toggle=$("#shelfReorderToggle");
-      container?.classList.toggle("reorder-mode",window.__yondaReorderMode);
-      toggle?.classList.toggle("active",window.__yondaReorderMode);
-      if(toggle) toggle.textContent=window.__yondaReorderMode?"並べ替え終了":"並べ替え";
-      const hint=$("#shelfReorderHint");
-      if(hint){
-        hint.textContent=window.__yondaReorderMode
-          ? "本をそのままドラッグしてください。完了後に「並べ替え終了」を押します"
-          : "「並べ替え」を押すと本を移動できます";
-      }
-    }
-
-    $("#shelfReorderToggle").onclick=()=>{
-      setShelfReorderMode(!window.__yondaReorderMode);
-    };
-
     function bindShelfReorder(){
       const container=$("#allBookList");
       if(!container||container.dataset.reorderBound==="1") return;
       container.dataset.reorderBound="1";
 
       let active=null;
-      let pointerId=null;
+      let timer=null;
+      let moved=false;
+      let suppressClickUntil=0;
       let startX=0;
       let startY=0;
-      let moved=false;
+
+      const clear=()=>{
+        if(timer) clearTimeout(timer);
+        timer=null;
+      };
 
       container.addEventListener("pointerdown",event=>{
-        if(!window.__yondaReorderMode||event.button!==0) return;
+        if(container.dataset.reorderEnabled!=="1"||event.button!==0) return;
         const wrap=event.target.closest(".spine-wrap[data-book-id]");
         if(!wrap) return;
-        event.preventDefault();
-        active=wrap;
-        pointerId=event.pointerId;
+        moved=false;
         startX=event.clientX;
         startY=event.clientY;
-        moved=false;
-        active.classList.add("reorder-dragging");
-        container.classList.add("reorder-active");
-        try{active.setPointerCapture(pointerId);}catch(_error){}
-      },{passive:false});
+        clear();
+        timer=setTimeout(()=>{
+          active=wrap;
+          active.classList.add("reorder-dragging");
+          container.classList.add("reorder-active");
+          try{active.setPointerCapture(event.pointerId);}catch(_error){}
+          if(navigator.vibrate) navigator.vibrate(25);
+        },350);
+      });
 
       container.addEventListener("pointermove",event=>{
-        if(!active||event.pointerId!==pointerId) return;
+        if(!active){
+          if(timer&&Math.hypot(event.clientX-startX,event.clientY-startY)>10) clear();
+          return;
+        }
+        moved=true;
         event.preventDefault();
-        if(Math.abs(event.clientX-startX)>3||Math.abs(event.clientY-startY)>3) moved=true;
-
         const target=document.elementFromPoint(event.clientX,event.clientY)
           ?.closest(".spine-wrap[data-book-id]");
         if(!target||target===active||!container.contains(target)) return;
 
-        const rect=target.getBoundingClientRect();
-        const sameRow=Math.abs(event.clientY-(rect.top+rect.height/2))<rect.height*.55;
+        const targetRect=target.getBoundingClientRect();
+        const sameRow=active.parentElement===target.parentElement;
         const before=sameRow
-          ? event.clientX<rect.left+rect.width/2
-          : event.clientY<rect.top+rect.height/2;
+          ? event.clientX<targetRect.left+targetRect.width/2
+          : event.clientY<targetRect.top+targetRect.height/2;
         target.parentElement.insertBefore(active,before?target:target.nextSibling);
+
+        // 長い本棚ではドラッグ位置に応じてモーダル内を緩やかにスクロールする。
+        const scroller=container.closest(".bookshelf-full");
+        if(scroller){
+          const rect=scroller.getBoundingClientRect();
+          if(event.clientY<rect.top+48) scroller.scrollTop-=14;
+          else if(event.clientY>rect.bottom-48) scroller.scrollTop+=14;
+        }
       },{passive:false});
 
-      const finish=event=>{
+      const finish=()=>{
+        clear();
         if(!active) return;
-        if(event&&pointerId!==null&&event.pointerId!==pointerId) return;
         active.classList.remove("reorder-dragging");
         container.classList.remove("reorder-active");
-        try{active.releasePointerCapture(pointerId);}catch(_error){}
         active=null;
-        pointerId=null;
-        if(moved) persistShelfOrderFromDom();
+        if(moved){
+          suppressClickUntil=Date.now()+600;
+          persistShelfOrderFromDom();
+        }
       };
 
       container.addEventListener("pointerup",finish);
       container.addEventListener("pointercancel",finish);
+      container.addEventListener("pointerleave",event=>{
+        if(active&&event.buttons===0) finish();
+      });
+      container.addEventListener("click",event=>{
+        if(Date.now()<suppressClickUntil){
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      },true);
+    }
+
+    function renderStats(){
+      const done = books.filter(b=>b.status==="done");
+      $("#totalCount").textContent = books.length;
+      $("#readCount").textContent = done.length;
+      $("#pageCount").textContent = done.reduce((s,b)=>s+(Number(b.pages)||0),0).toLocaleString();
+
+      const now = new Date();
+      const monthDone = done.filter(b=>{
+        if(!b.finishedAt) return false;
+        const d=new Date(b.finishedAt+"T00:00:00");
+        return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
+      }).length;
+      $("#goalText").textContent = `${monthDone} / ${monthlyGoal}冊`;
+      $("#goalBar").style.width = `${Math.min(100, monthlyGoal ? monthDone/monthlyGoal*100 : 100)}%`;
+      $("#paceText").textContent = monthDone >= monthlyGoal ? "目標達成！" : `あと${monthlyGoal-monthDone}冊`;
+
+      const memoBook = done.filter(b=>b.memo).sort((a,b)=>(b.finishedAt||"").localeCompare(a.finishedAt||""))[0];
+      $("#recentMemo").textContent = memoBook ? `『${memoBook.title}』\n${memoBook.memo}` : "まだ読了メモがありません。";
+    }
+
+    function getDashboardYear(){
+      const selected=Number($("#dashboardYearSelect")?.value);
+      return selected || new Date().getFullYear();
+    }
+
+    function populateDashboardYears(){
+      const select=$("#dashboardYearSelect");
+      if(!select) return;
+      const current=new Date().getFullYear();
+      const years=new Set([current]);
+      books.forEach(book=>{
+        if(book.finishedAt && /^\d{4}-\d{2}-\d{2}$/.test(book.finishedAt)){
+          years.add(Number(book.finishedAt.slice(0,4)));
+        }
+      });
+      for(let y=current-10;y<=current+2;y++) years.add(y);
+      const previous=Number(select.value)||current;
+      const sorted=[...years].sort((a,b)=>b-a);
+      select.innerHTML=sorted.map(y=>`<option value="${y}">${y}年</option>`).join("");
+      select.value=String(sorted.includes(previous)?previous:current);
+    }
+
+    function getMonthsForYear(year){
+      const months=Array.from({length:12},(_,m)=>({
+        y:year,m,label:`${m+1}月`,books:0,pages:0
+      }));
+      books.filter(b=>b.status==="done"&&b.finishedAt).forEach(b=>{
+        const d=new Date(b.finishedAt+"T00:00:00");
+        if(d.getFullYear()!==year) return;
+        months[d.getMonth()].books++;
+        months[d.getMonth()].pages+=Number(b.pages)||0;
+      });
+      return months;
+    }
+
+    function renderBarChart(rows, valueKey, unit){
+      const max=Math.max(1,...rows.map(x=>x[valueKey]));
+      return `<div class="dashboard-bars">${rows.map(x=>`
+        <div class="dashboard-bar-item">
+          <b>${x[valueKey] ? x[valueKey].toLocaleString()+unit : ""}</b>
+          <i style="height:${Math.max(4,x[valueKey]/max*155)}px"></i>
+          <span>${x.label}</span>
+        </div>`).join("")}</div>`;
+    }
+
+    function renderDonut(items){
+      const total=items.reduce((s,x)=>s+x.value,0);
+      if(!total) return '<div class="empty-chart">表示できるデータがまだありません。</div>';
+      const colors=["#6f8f68","#9eb792","#c7a779","#9a829f","#7897a1","#c68472"];
+      let pos=0;
+      const stops=items.map((x,i)=>{
+        const start=pos;
+        pos += x.value/total*100;
+        return `${colors[i%colors.length]} ${start}% ${pos}%`;
+      }).join(",");
+      return `<div class="donut-wrap">
+        <div class="donut" style="background:conic-gradient(${stops})"></div>
+        <div class="legend">${items.map((x,i)=>`
+          <div class="legend-item">
+            <i class="legend-dot" style="background:${colors[i%colors.length]}"></i>
+            <span>${escapeHtml(x.label)}：${x.value}冊</span>
+          </div>`).join("")}
+        </div>
+      </div>`;
+    }
+
+    function renderDashboard(){
+      populateDashboardYears();
+      const type=$("#chartTypeSelect")?.value || "monthlyBooks";
+      const target=$("#dashboardChart");
+      const selectedYear=getDashboardYear();
+      const months=getMonthsForYear(selectedYear);
+
+      if(type==="monthlyBooks") target.innerHTML=renderBarChart(months,"books","冊");
+      if(type==="monthlyPages") target.innerHTML=renderBarChart(months,"pages","頁");
+
+      if(type==="genres"){
+        const counts={};
+        books.filter(b=>b.status==="done").forEach(b=>{
+          const tags=(b.tags||[]).length ? b.tags : ["未分類"];
+          tags.forEach(t=>counts[t]=(counts[t]||0)+1);
+        });
+        const items=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,6)
+          .map(([label,value])=>({label,value}));
+        target.innerHTML=renderDonut(items);
+      }
+
+      if(type==="status"){
+        const items=[
+          {label:"読みたい",value:books.filter(b=>b.status==="want").length},
+          {label:"読書中",value:books.filter(b=>b.status==="reading").length},
+          {label:"読了",value:books.filter(b=>b.status==="done").length}
+        ].filter(x=>x.value);
+        target.innerHTML=renderDonut(items);
+      }
+
+      if(type==="ratings"){
+        const rows=[1,2,3,4,5].map(n=>({
+          label:`★${n}`,
+          count:books.filter(b=>Number(b.rating)===n).length
+        }));
+        target.innerHTML=renderBarChart(rows,"count","冊");
+      }
+
+      const done=books.filter(b=>b.status==="done");
+      const yearDone=done.filter(b=>b.finishedAt && Number(b.finishedAt.slice(0,4))===selectedYear);
+      const yearPages=yearDone.reduce((s,b)=>s+(Number(b.pages)||0),0);
+      const rated=yearDone.filter(b=>Number(b.rating)>0);
+      const avg=rated.reduce((s,b)=>s+Number(b.rating),0)/(rated.length||1);
+
+      $("#dashboardSummary").textContent =
+        `${selectedYear}年の読了：${yearDone.length}冊\n`+
+        `${selectedYear}年の読了ページ：${yearPages.toLocaleString()}ページ\n`+
+        `年間平均評価：${rated.length?avg.toFixed(1):"未評価"} / 5\n\n`+
+        `全登録：${books.length}冊\n`+
+        `全期間の読了：${done.length}冊\n`+
+        `読書中：${books.filter(b=>b.status==="reading").length}冊\n`+
+        `読みたい：${books.filter(b=>b.status==="want").length}冊`;
+    }
+
+    const recommendationPool = {
+      "心理学":[
+        ["ファスト＆スロー","ダニエル・カーネマン","意思決定や認知の偏りを、より体系的に広げられます。"],
+        ["影響力の武器","ロバート・B・チャルディーニ","人が動かされる仕組みを実例から理解できます。"]
+      ],
+      "仕事":[
+        ["イシューからはじめよ","安宅和人","重要な課題を見極める力を深められます。"],
+        ["HIGH OUTPUT MANAGEMENT","アンドリュー・S・グローブ","組織と成果を実務的に考える一冊です。"]
+      ],
+      "自己啓発":[
+        ["7つの習慣","スティーブン・R・コヴィー","自己管理を長期的な原則から整理できます。"],
+        ["限りある時間の使い方","オリバー・バークマン","効率だけでなく、時間との向き合い方を広げられます。"]
+      ],
+      "小説":[
+        ["アルジャーノンに花束を","ダニエル・キイス","知性・幸福・人間関係を物語として深く考えられます。"],
+        ["日の名残り","カズオ・イシグロ","人生の選択と後悔を静かに味わえる作品です。"]
+      ],
+      "default":[
+        ["ファクトフルネス","ハンス・ロスリング","世界の見方をデータで補正する入口になります。"],
+        ["暇と退屈の倫理学","國分功一郎","日常や自由について異なる角度から考えられます。"],
+        ["独学大全","読書猿","読書を知識として定着させる方法を広げられます。"]
+      ]
+    };
+
+    function amazonUrl(title, kindleOnly=false){
+      const query = kindleOnly ? `${title} Kindle版` : title;
+      const params = new URLSearchParams({ k: query });
+      if(AMAZON_ASSOCIATE_TAG) params.set("tag", AMAZON_ASSOCIATE_TAG);
+      return `https://www.amazon.co.jp/s?${params.toString()}`;
+    }
+
+    function calculateAnalysis(){
+      const done=books.filter(b=>b.status==="done");
+      const now=new Date();
+      const thisMonth=done.filter(b=>{
+        if(!b.finishedAt) return false;
+        const d=new Date(b.finishedAt+"T00:00:00");
+        return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
+      });
+      const counts={};
+      done.forEach(b=>(b.tags||[]).forEach(t=>counts[t]=(counts[t]||0)+1));
+      const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+      const top=sorted[0]?.[0];
+      const second=sorted[1]?.[0];
+      const rated=done.filter(b=>Number(b.rating)>0);
+      const highRated=rated.filter(b=>Number(b.rating)>=4);
+      const avg=rated.reduce((s,b)=>s+Number(b.rating),0)/(rated.length||1);
+      const memoWords=done.filter(b=>b.memo).map(b=>b.memo).join(" ");
+      const practical=/仕事|実践|考え|行動|学び|役立|習慣/.test(memoWords);
+      const profile=JSON.parse(localStorage.getItem(PROFILE_KEY)||'{}');
+      const name=profile.name ? `${profile.name}さん、` : "";
+
+      if(!done.length){
+        return {
+          trend:`${name}最初の一冊を登録するところから始めましょう。読み終えた本が増えるほど、あなたらしい読書の好みが少しずつ見えてきます。`,
+          gap:"気になっている本を自由に選んで大丈夫です。まずは読了本が2〜3冊たまると、共通するテーマや好みを見つけやすくなります。",
+          recs:recommendationPool.default
+        };
+      }
+
+      const monthPraise = thisMonth.length
+        ? `今月は${thisMonth.length}冊読めましたね。とてもいいペースです。`
+        : `これまでに${done.length}冊を読み終えています。きちんと記録を積み重ねているのが素敵です。`;
+
+      let tendency = top
+        ? `記録を見ると、「${top}」に自然と手が伸びることが多いようです。${second?`一方で「${second}」も読まれていて、関心を一つに絞りすぎず、少しずつ周辺へ広げているのが印象的です。`:"一つのテーマを丁寧に掘り下げる読み方ができています。"}`
+        : `いろいろな分野をバランスよく選んでいて、好奇心の幅が感じられます。`;
+
+      if(rated.length){
+        tendency += ` 読了本の平均評価は${avg.toFixed(1)}で、${highRated.length}冊に★4以上を付けています。`;
+      }
+      tendency += practical
+        ? ` 感想には「学んだことを日常や仕事に生かしたい」という視点も見えていて、読むだけで終わらせない姿勢がとてもよいですね。`
+        : ` これから一言メモが増えていくと、「何に心が動いたか」まで、さらに詳しく見えてきそうです。`;
+
+      const hint = top
+        ? `次の一冊は、「${top}」の延長線にある本を選んでもよいですし、今の関心と少し離れた物語や歴史を挟むのも楽しそうです。今までの読書を否定せず、同じテーマを別の角度から眺められる本を選んでみました。`
+        : `次の一冊は、これまで気になっていたテーマをもう少し深く掘る本か、普段は選ばない分野を一冊だけ混ぜるのがおすすめです。無理に幅を広げる必要はなく、心が動くものを優先して大丈夫です。`;
+
+      return {
+        trend:`${monthPraise} ${tendency}`,
+        gap:hint,
+        recs:(recommendationPool[top]||recommendationPool.default)
+          .concat(recommendationPool.default).slice(0,3)
+      };
+    }
+
+    function updateAnalysisIfNeeded(forceInitial=false){
+      const doneCount=books.filter(b=>b.status==="done").length;
+      const lastCount=Number(localStorage.getItem(ANALYSIS_COUNT_KEY) || 0);
+      const cached=localStorage.getItem(ANALYSIS_CACHE_KEY);
+
+      const shouldUpdate = !cached || forceInitial || doneCount >= lastCount + 2;
+      if(shouldUpdate){
+        const fresh=calculateAnalysis();
+        localStorage.setItem(ANALYSIS_CACHE_KEY, JSON.stringify(fresh));
+        localStorage.setItem(ANALYSIS_COUNT_KEY, String(doneCount));
+        return fresh;
+      }
+      return JSON.parse(cached);
+    }
+
+    function renderAnalysis(){
+      // ProのAI分析は現在開発中のため、公開画面では処理を実行しません。
+    }
+    function renderPlan(){
+      const badge=$("#headerPlanBadge");
+      badge.textContent="Lite";
+      badge.className="plan-chip lite";
+    }
+
+
+    function isoToJapaneseDate(value){
+      const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value||""));
+      return match ? `${match[1]}/${match[2]}/${match[3]}` : "";
+    }
+
+    function japaneseDateToIso(value){
+      const normalized=String(value||"").trim().replace(/[.\-]/g,"/");
+      const match=/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/.exec(normalized);
+      if(!match) return "";
+      const y=Number(match[1]), m=Number(match[2]), d=Number(match[3]);
+      const test=new Date(y,m-1,d);
+      if(test.getFullYear()!==y || test.getMonth()!==m-1 || test.getDate()!==d) return "";
+      return `${String(y).padStart(4,"0")}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    }
+
+    function syncJapaneseFinishedDateDisplay(){
+      const hidden=$("#finishedAt");
+      const display=$("#finishedAtDisplay");
+      const picker=$("#finishedAtPicker");
+      if(hidden&&display) display.value=isoToJapaneseDate(hidden.value);
+      if(hidden&&picker) picker.value=hidden.value||"";
+    }
+
+    function markBookAsFinishedWhenDateExists(){
+      const hidden=$("#finishedAt");
+      const status=$("#status");
+      if(hidden?.value && status) status.value="done";
+    }
+
+    function bindJapaneseFinishedDateInput(){
+      const hidden=$("#finishedAt");
+      const display=$("#finishedAtDisplay");
+      const picker=$("#finishedAtPicker");
+      const control=picker?.closest(".finished-date-control");
+      if(!hidden||!display||!picker||picker.dataset.bound==="1") return;
+      picker.dataset.bound="1";
+
+      const openPicker=()=>{
+        try{
+          if(typeof picker.showPicker==="function") picker.showPicker();
+          else picker.focus();
+        }catch(error){
+          picker.focus();
+        }
+      };
+
+      control?.addEventListener("click",openPicker);
+      picker.addEventListener("click",()=>{
+        if(typeof picker.showPicker==="function"){
+          try{ picker.showPicker(); }catch(error){}
+        }
+      });
+      picker.addEventListener("change",()=>{
+        hidden.value=picker.value||"";
+        markBookAsFinishedWhenDateExists();
+        hidden.dispatchEvent(new Event("change",{bubbles:true}));
+        syncJapaneseFinishedDateDisplay();
+      });
+    }
+
+    function updatePageFieldNote(){
+      const pages=$("#pages");
+      const note=$("#pageFieldNote");
+      if(!pages||!note) return;
+      const hasPages=Number(pages.value)>0;
+      note.hidden=hasPages;
     }
 
     function renderAll(){ renderBooks();renderStats();renderDashboard();renderAnalysis();renderPlan(); }
@@ -2328,9 +2634,6 @@
       $("#coverUrl").value=book?.coverUrl||"";
       $("#bookForm").dataset.searchMeta=JSON.stringify({isbn:book?.isbn||"",publisher:book?.publisher||"",source:book?.source||"",sourceUrl:book?.sourceUrl||""});
       $("#bookSearchResults").innerHTML="";
-      const diagnosticBox=$("#pageDiagnostic");
-      if(diagnosticBox) diagnosticBox.hidden=true;
-      pageDiagnosticState=null;
       $("#bookSearchInput").value="";
       renderGenreSettings();
       $("#deleteBtn").style.visibility=book?"visible":"hidden";
@@ -2365,7 +2668,6 @@
           ? Number(books.find(book=>book.id===currentEditId)?.shelfOrder)
           : Math.max(0,...books.map(book=>Number(book.shelfOrder)||0))+1
       };
-      if(data.isbn&&data.pages>0) rememberPageCount(data.isbn,data.pages);
       if(data.finishedAt) data.status="done";
       if(data.status==="done" && !data.finishedAt) data.finishedAt=new Date().toISOString().slice(0,10);
       const i=books.findIndex(b=>b.id===data.id);
@@ -2729,8 +3031,7 @@
           const payload=encodeURIComponent(JSON.stringify({
             title:item.title||'',author:item.author||'',pages:Number(item.pages)||0,
             tags:Array.isArray(item.tags)?item.tags:[],coverUrl:cover,
-            isbn:item.isbn||'',publisher:item.publisher||'',salesDate:item.salesDate||'',
-            source:item.source||'rakuten-books',sourceUrl:item.itemUrl||''
+            isbn:item.isbn||'',publisher:item.publisher||'',source:item.source||'rakuten-books',sourceUrl:item.itemUrl||''
           }));
           return `<div class="search-result">
             ${cover?`<img src="${escapeHtml(cover)}" alt="">`:`<div style="width:52px;height:68px;background:var(--panel-2);border-radius:8px;display:grid;place-items:center">📖</div>`}
@@ -2750,17 +3051,21 @@
     }
 
     function pageCountFromBibliographicText(value){
-      const text=String(value||"").normalize("NFKC");
-      const patterns=[
-        /(?:本文|総ページ数|ページ数)?\s*(\d{1,4})\s*(?:ページ|頁|p\.?)(?:\b|$)/i,
-        /(?:^|[\s,;])(?:x{0,4}\s*,?\s*)?(\d{1,4})\s*p\.?\s*(?:$|[\s,;])/i
-      ];
-      for(const pattern of patterns){
-        const match=text.match(pattern);
-        const pages=match?Number(match[1]):0;
+      const text=String(value||"").normalize("NFKC").replace(/\s+/g," ").trim();
+      if(!text) return 0;
+
+      // 「xii, 360 p.」「12, 356ページ」のような前付け＋本文ページは、
+      // ページ単位の直前にある最後のアラビア数字を採用する。
+      const unitMatches=[...text.matchAll(/(\d{1,4})\s*(?:ページ|頁|p(?:ages?)?\.?)(?=$|[\s,;:.)\]】])/gi)];
+      for(let index=unitMatches.length-1;index>=0;index--){
+        const pages=Number(unitMatches[index][1]);
         if(pages>0&&pages<5000) return pages;
       }
-      return 0;
+
+      // NDL等で見られる「冊 ; 20cm」の前にページ数だけが置かれる表記を補完。
+      const extentMatch=text.match(/(?:^|[\s,;:])(?:[ivxlcdm]+\s*,\s*)?(\d{2,4})\s*(?=p?\s*[;／/]?\s*\d{1,3}\s*cm(?:$|[\s,;]))/i);
+      const extentPages=extentMatch?Number(extentMatch[1]):0;
+      return extentPages>0&&extentPages<5000?extentPages:0;
     }
 
     async function fetchNdlPageCount(metadata){
@@ -2809,13 +3114,17 @@
       const extents=record?.onix?.DescriptiveDetail?.Extent;
       const list=Array.isArray(extents)?extents:(extents?[extents]:[]);
 
-      // ExtentType=00（本文ページ数）を優先し、それ以外のページ表記も補助的に確認
+      // ONIX: ExtentType 00/03/11（本文・総ページ）を優先し、
+      // ExtentUnit 03（ページ）または単位未設定の値だけを候補にする。
+      const pageExtentTypes=new Set(["00","03","11"]);
       const ordered=[
-        ...list.filter(extent=>String(extent?.ExtentType??"")==="00"),
-        ...list.filter(extent=>String(extent?.ExtentType??"")!=="00")
+        ...list.filter(extent=>pageExtentTypes.has(String(extent?.ExtentType??""))),
+        ...list.filter(extent=>!pageExtentTypes.has(String(extent?.ExtentType??"")))
       ];
       for(const extent of ordered){
-        const value=positivePageNumber(extent?.ExtentValue);
+        const unit=String(extent?.ExtentUnit??"");
+        if(unit&&unit!=="03") continue;
+        const value=pageCountFromBibliographicText(extent?.ExtentValue)||positivePageNumber(extent?.ExtentValue);
         if(value) return value;
       }
 
@@ -2853,105 +3162,7 @@
       return 0;
     }
 
-    // 外部書誌APIでページ数が欠落する場合に備えた、ISBNで確認済みの補完値。
-    // 同一ISBNの紙書籍にのみ適用し、電子版・別版には流用しない。
-    const VERIFIED_PAGE_COUNTS={
-      "9784478025819":296,
-      // 吉田修一『国宝 上 青春篇』
-      "9784022515650":351,
-      // 文庫版
-      "9784022650085":408,
-      // 吉田修一『国宝 下 花道篇』単行本
-      "9784022515667":360,
-      // 文庫版
-      "9784022650092":432,
-      // 愛蔵版
-      "9784022520883":360
-    };
-
-    const PAGE_COUNT_CACHE_KEY="yonda-page-count-cache-v1";
-
-    function getLearnedPageCounts(){
-      try{
-        const value=JSON.parse(localStorage.getItem(PAGE_COUNT_CACHE_KEY)||"{}");
-        return value&&typeof value==="object"?value:{};
-      }catch(_error){
-        return {};
-      }
-    }
-
-    function getLearnedPageCount(isbn){
-      const key=normalizedIsbn(isbn);
-      if(!key) return 0;
-      return positivePageNumber(getLearnedPageCounts()[key]);
-    }
-
-    function rememberPageCount(isbn,pages){
-      const key=normalizedIsbn(isbn);
-      const value=positivePageNumber(pages);
-      if(!key||!value) return;
-      const cache=getLearnedPageCounts();
-      cache[key]=value;
-      try{localStorage.setItem(PAGE_COUNT_CACHE_KEY,JSON.stringify(cache));}catch(_error){}
-    }
-
-    function getVerifiedPageCount(isbn){
-      const normalized=String(isbn||"").replace(/[^0-9Xx]/g,"");
-      return Number(VERIFIED_PAGE_COUNTS[normalized])||0;
-    }
-
-    let pageDiagnosticState=null;
-
-    function resetPageDiagnostic(metadata={}){
-      pageDiagnosticState={
-        title:metadata.title||"",
-        author:metadata.author||"",
-        isbn:normalizedIsbn(metadata.isbn||""),
-        publisher:metadata.publisher||"",
-        salesDate:metadata.salesDate||"",
-        results:{learned:0,verified:0,openbd:0,ndl:0,openlibrary:0,google:0},
-        adopted:0,
-        source:""
-      };
-      renderPageDiagnostic();
-    }
-
-    function setPageDiagnosticResult(source,value){
-      if(!pageDiagnosticState) return;
-      pageDiagnosticState.results[source]=positivePageNumber(value);
-      renderPageDiagnostic();
-    }
-
-    function setPageDiagnosticAdopted(source,value){
-      if(!pageDiagnosticState) return;
-      pageDiagnosticState.adopted=positivePageNumber(value);
-      pageDiagnosticState.source=source||"";
-      renderPageDiagnostic();
-    }
-
-    function renderPageDiagnostic(){
-      const box=$("#pageDiagnostic");
-      if(!box||!pageDiagnosticState) return;
-      const d=pageDiagnosticState;
-      box.textContent=[
-        "【ページ数診断（仮）】",
-        `タイトル: ${d.title||"不明"}`,
-        `著者: ${d.author||"不明"}`,
-        `ISBN: ${d.isbn||"不明"}`,
-        `出版社: ${d.publisher||"不明"}`,
-        `発売日: ${d.salesDate||"不明"}`,
-        "",
-        `学習済み: ${d.results.learned||0}`,
-        `確認済み補完: ${d.results.verified||0}`,
-        `openBD: ${d.results.openbd||0}`,
-        `NDL: ${d.results.ndl||0}`,
-        `Open Library: ${d.results.openlibrary||0}`,
-        `Google Books: ${d.results.google||0}`,
-        "",
-        `採用: ${d.adopted||0}${d.source?`（${d.source}）`:""}`
-      ].join("\n");
-      box.hidden=false;
-    }
+    // 個別ISBNの手動辞書は使わず、外部書誌データの照合結果だけで決定する。
 
     function normalizedIsbn(value){
       return String(value||"").replace(/[^0-9Xx]/g,"").toUpperCase();
@@ -3090,70 +3301,47 @@
       return 0;
     }
 
+    async function fetchOpenBdPageCount(metadata){
+      const normalized=normalizedIsbn(metadata?.isbn);
+      if(!normalized) return 0;
+      const controller=new AbortController();
+      const timer=setTimeout(()=>controller.abort(),8000);
+      try{
+        const response=await fetch(`https://api.openbd.jp/v1/get?isbn=${encodeURIComponent(normalized)}`,{signal:controller.signal});
+        if(!response.ok) return 0;
+        const data=await response.json();
+        const record=Array.isArray(data)?data[0]:null;
+        return record?findOpenBdPageCount(record):0;
+      }catch(error){
+        console.warn("openBD page lookup failed",error);
+        return 0;
+      }finally{
+        clearTimeout(timer);
+      }
+    }
+
     async function fetchBestPageCount(metadata){
       const normalized=normalizedIsbn(metadata?.isbn);
       if(!normalized&&!metadata?.title) return 0;
 
-      const learned=getLearnedPageCount(normalized);
-      setPageDiagnosticResult("learned",learned);
-      if(learned){
-        setPageDiagnosticAdopted("学習済み",learned);
-        return learned;
-      }
+      // 各サービスを並列照会し、待ち時間を抑えながら相互確認する。
+      const results=await Promise.all([
+        fetchOpenBdPageCount(metadata||{}),
+        fetchNdlPageCount(metadata||{}),
+        fetchOpenLibraryPageCount(metadata||{}),
+        fetchGoogleBooksPageCount(metadata||{})
+      ]);
+      const valid=results.map(positivePageNumber).filter(Boolean);
+      if(!valid.length) return 0;
 
-      const verified=getVerifiedPageCount(normalized);
-      setPageDiagnosticResult("verified",verified);
-      if(verified){
-        setPageDiagnosticAdopted("確認済み補完",verified);
-        return verified;
-      }
+      // 複数サービスが同じ値を返した場合は、その合意値を最優先する。
+      const counts=new Map();
+      valid.forEach(value=>counts.set(value,(counts.get(value)||0)+1));
+      const consensus=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
+      if(consensus[0]?.[1]>=2) return consensus[0][0];
 
-      let openBdPages=0;
-      if(normalized){
-        const controller=new AbortController();
-        const timer=setTimeout(()=>controller.abort(),8000);
-        try{
-          const response=await fetch(`https://api.openbd.jp/v1/get?isbn=${encodeURIComponent(normalized)}`,{signal:controller.signal});
-          if(response.ok){
-            const data=await response.json();
-            const record=Array.isArray(data)?data[0]:null;
-            openBdPages=record?findOpenBdPageCount(record):0;
-          }
-        }catch(error){
-          console.warn("openBD page lookup failed",error);
-        }finally{
-          clearTimeout(timer);
-        }
-      }
-      setPageDiagnosticResult("openbd",openBdPages);
-      if(openBdPages){
-        setPageDiagnosticAdopted("openBD",openBdPages);
-        return openBdPages;
-      }
-
-      const ndlPages=await fetchNdlPageCount(metadata||{});
-      setPageDiagnosticResult("ndl",ndlPages);
-      if(ndlPages){
-        setPageDiagnosticAdopted("NDL",ndlPages);
-        return ndlPages;
-      }
-
-      const openLibraryPages=await fetchOpenLibraryPageCount(metadata||{});
-      setPageDiagnosticResult("openlibrary",openLibraryPages);
-      if(openLibraryPages){
-        setPageDiagnosticAdopted("Open Library",openLibraryPages);
-        return openLibraryPages;
-      }
-
-      const googlePages=await fetchGoogleBooksPageCount(metadata||{});
-      setPageDiagnosticResult("google",googlePages);
-      if(googlePages){
-        setPageDiagnosticAdopted("Google Books",googlePages);
-        return googlePages;
-      }
-
-      setPageDiagnosticAdopted("",0);
-      return 0;
+      // 合意がない場合は、版の特定精度が高い順（openBD→NDL→Open Library→Google Books）。
+      return results.find(value=>positivePageNumber(value))||0;
     }
 
     window.selectSearchResult=async(payload)=>{
@@ -3165,45 +3353,23 @@
       updatePageFieldNote();
       $("#tags").value=(d.tags||[]).join(", ");
       $("#coverUrl").value=d.coverUrl||"";
-      $("#bookForm").dataset.searchMeta=JSON.stringify({
-        isbn:d.isbn||"",
-        publisher:d.publisher||"",
-        salesDate:d.salesDate||"",
-        source:d.source||"",
-        sourceUrl:d.sourceUrl||""
-      });
-
-      resetPageDiagnostic({
-        title:d.title||"",
-        author:d.author||"",
-        isbn:d.isbn||"",
-        publisher:d.publisher||"",
-        salesDate:d.salesDate||""
-      });
+      $("#bookForm").dataset.searchMeta=JSON.stringify({isbn:d.isbn||"",publisher:d.publisher||"",source:d.source||"",sourceUrl:d.sourceUrl||""});
 
       const resultBox=$("#bookSearchResults");
       if(Number(d.pages)>0){
-        setPageDiagnosticAdopted("検索結果に含まれる値",Number(d.pages));
         resultBox.innerHTML='<div class="note">選択した本の情報を下へ反映しました。状態やメモを確認して保存してください。</div>';
         return;
       }
 
-      const editionInfo=[
-        d.publisher||"",
-        d.salesDate||"",
-        d.isbn?`ISBN ${d.isbn}`:""
-      ].filter(Boolean).join("・");
-      resultBox.innerHTML=`<div class="note">選択した版（${escapeHtml(editionInfo||"版情報なし")}）のページ数を複数の書誌情報から確認しています...</div>`;
+      resultBox.innerHTML='<div class="note">選択した本の情報を反映しました。ページ数を複数の書誌情報から確認しています...</div>';
       const pageCount=await fetchBestPageCount({
         isbn:d.isbn||"",
         title:d.title||"",
         author:d.author||"",
-        publisher:d.publisher||"",
-        salesDate:d.salesDate||""
+        publisher:d.publisher||""
       });
       if(pageCount>0){
         $("#pages").value=pageCount;
-        rememberPageCount(d.isbn||"",pageCount);
         updatePageFieldNote();
         resultBox.innerHTML='<div class="note">選択した本の情報とページ数を反映しました。状態やメモを確認して保存してください。</div>';
       }else{
@@ -3284,41 +3450,20 @@
       $("#settingsSignupBtn").hidden=logged;
     }
     async function initAuth(){
-      try{
-        if(!CLOUD_ENABLED){
-          updateAccountUI();
+      if(!CLOUD_ENABLED){updateAccountUI();return;}
+      const {data}=await supabaseClient.auth.getSession();
+      currentUser=data.session?.user||null;
+      updateAccountUI();
+      if(currentUser) await loadCloudData();
+      supabaseClient.auth.onAuthStateChange(async(event,session)=>{
+        currentUser=session?.user||null;
+        updateAccountUI();
+        if(event==="PASSWORD_RECOVERY"){
+          openPasswordResetModal(true);
           return;
         }
-
-        const {data,error}=await supabaseClient.auth.getSession();
-        if(error) console.warn("認証状態の取得に失敗しました:",error);
-
-        currentUser=data?.session?.user||null;
-        updateAccountUI();
-
-        if(currentUser){
-          closeAuthModal();
-          await loadCloudData();
-        }
-
-        supabaseClient.auth.onAuthStateChange(async(event,session)=>{
-          currentUser=session?.user||null;
-          updateAccountUI();
-
-          if(event==="PASSWORD_RECOVERY"){
-            openPasswordResetModal(true);
-            return;
-          }
-
-          if(currentUser){
-            closeAuthModal();
-            await loadCloudData();
-          }
-        });
-      }catch(error){
-        console.error("認証初期化に失敗しました:",error);
-        updateAccountUI();
-      }
+        if(currentUser) await loadCloudData();
+      });
     }
     $("#openAuthBtn").onclick=()=>{setAuthMode("signup");openAuthModal();};
     $("#openLoginBtn").onclick=()=>{setAuthMode("login");openAuthModal();};
@@ -3479,18 +3624,11 @@
     });
 
     function escapeHtml(v=""){return String(v).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
-    // 認証状態の復元は画面描画とは独立して開始する。
-    // 本棚などの描画で問題が起きてもログイン表示を更新できるようにする。
+    renderAll();
+    bindJapaneseFinishedDateInput();
+    syncJapaneseFinishedDateDisplay();
+    updatePageFieldNote();
     initAuth();
-
-    try{
-      renderAll();
-      bindJapaneseFinishedDateInput();
-      syncJapaneseFinishedDateDisplay();
-      updatePageFieldNote();
-    }catch(error){
-      console.error("初期画面の描画に失敗しました:",error);
-    }
   
 
     // お問い合わせは受信先メールアドレスをHTMLに露出させないため、
