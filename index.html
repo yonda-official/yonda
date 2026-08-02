@@ -756,6 +756,48 @@
       .storage-banner-actions button{width:100%;padding-left:10px;padding-right:10px}
     }
 
+  
+    .date-assist{
+      display:grid;
+      grid-template-columns:1.25fr 1fr 1fr;
+      gap:6px;
+      margin-top:7px;
+    }
+    .date-assist select{
+      min-width:0;
+      padding:9px 8px;
+      border-radius:11px;
+      font-size:.72rem;
+      background:#fff;
+    }
+    .date-assist-note{
+      display:block;
+      margin-top:5px;
+      font-size:.64rem;
+      line-height:1.45;
+      color:var(--muted);
+    }
+    .dashboard-controls{
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .dashboard-controls select{width:auto}
+    #dashboardYearSelect{min-width:104px}
+    @media(max-width:620px){
+      .dashboard-controls{
+        width:100%;
+        display:grid;
+        grid-template-columns:1fr 1fr;
+      }
+      .dashboard-controls select{
+        width:100%!important;
+        min-width:0!important;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -871,13 +913,16 @@
         <div class="panel">
           <div class="panel-head">
             <h3>マイダッシュボード</h3>
-            <select id="chartTypeSelect" style="width:auto;min-width:155px">
-              <option value="monthlyBooks">月別の読了冊数</option>
-              <option value="monthlyPages">月別の読了ページ</option>
-              <option value="genres">ジャンル構成</option>
-              <option value="status">読書ステータス</option>
-              <option value="ratings">評価の分布</option>
-            </select>
+            <div class="dashboard-controls">
+              <select id="dashboardYearSelect" aria-label="表示する年"></select>
+              <select id="chartTypeSelect" style="min-width:155px">
+                <option value="monthlyBooks">月別の読了冊数</option>
+                <option value="monthlyPages">月別の読了ページ</option>
+                <option value="genres">ジャンル構成</option>
+                <option value="status">読書ステータス</option>
+                <option value="ratings">評価の分布</option>
+              </select>
+            </div>
           </div>
           <p class="note">見たい切り口を選ぶと、同じ場所のグラフが切り替わります。</p>
           <div id="dashboardChart"></div>
@@ -1324,6 +1369,12 @@
           </label>
           <label>読了日
             <input class="field" id="finishedAt" type="date" />
+            <span class="date-assist-note">過去の日付は下の選択欄から探すと便利です。カレンダーから未来の日付も選べます。</span>
+            <span class="date-assist" aria-label="読了日の補助選択">
+              <select id="finishedYearAssist" aria-label="読了年"></select>
+              <select id="finishedMonthAssist" aria-label="読了月"></select>
+              <select id="finishedDayAssist" aria-label="読了日"></select>
+            </span>
           </label>
         </div>
         <label>ジャンル・タグ
@@ -1622,17 +1673,37 @@
       $("#recentMemo").textContent = memoBook ? `『${memoBook.title}』\n${memoBook.memo}` : "まだ読了メモがありません。";
     }
 
-    function getLast12Months(){
-      const months=[];
-      const now=new Date();
-      for(let i=11;i>=0;i--){
-        const d=new Date(now.getFullYear(),now.getMonth()-i,1);
-        months.push({y:d.getFullYear(),m:d.getMonth(),label:`${d.getMonth()+1}月`,books:0,pages:0});
-      }
+    function getDashboardYear(){
+      const selected=Number($("#dashboardYearSelect")?.value);
+      return selected || new Date().getFullYear();
+    }
+
+    function populateDashboardYears(){
+      const select=$("#dashboardYearSelect");
+      if(!select) return;
+      const current=new Date().getFullYear();
+      const years=new Set([current]);
+      books.forEach(book=>{
+        if(book.finishedAt && /^\d{4}-\d{2}-\d{2}$/.test(book.finishedAt)){
+          years.add(Number(book.finishedAt.slice(0,4)));
+        }
+      });
+      for(let y=current-10;y<=current+2;y++) years.add(y);
+      const previous=Number(select.value)||current;
+      const sorted=[...years].sort((a,b)=>b-a);
+      select.innerHTML=sorted.map(y=>`<option value="${y}">${y}年</option>`).join("");
+      select.value=String(sorted.includes(previous)?previous:current);
+    }
+
+    function getMonthsForYear(year){
+      const months=Array.from({length:12},(_,m)=>({
+        y:year,m,label:`${m+1}月`,books:0,pages:0
+      }));
       books.filter(b=>b.status==="done"&&b.finishedAt).forEach(b=>{
         const d=new Date(b.finishedAt+"T00:00:00");
-        const target=months.find(x=>x.y===d.getFullYear()&&x.m===d.getMonth());
-        if(target){target.books++;target.pages+=Number(b.pages)||0;}
+        if(d.getFullYear()!==year) return;
+        months[d.getMonth()].books++;
+        months[d.getMonth()].pages+=Number(b.pages)||0;
       });
       return months;
     }
@@ -1669,9 +1740,11 @@
     }
 
     function renderDashboard(){
+      populateDashboardYears();
       const type=$("#chartTypeSelect")?.value || "monthlyBooks";
       const target=$("#dashboardChart");
-      const months=getLast12Months();
+      const selectedYear=getDashboardYear();
+      const months=getMonthsForYear(selectedYear);
 
       if(type==="monthlyBooks") target.innerHTML=renderBarChart(months,"books","冊");
       if(type==="monthlyPages") target.innerHTML=renderBarChart(months,"pages","頁");
@@ -1705,16 +1778,19 @@
       }
 
       const done=books.filter(b=>b.status==="done");
-      const totalPages=done.reduce((s,b)=>s+(Number(b.pages)||0),0);
-      const rated=done.filter(b=>Number(b.rating)>0);
+      const yearDone=done.filter(b=>b.finishedAt && Number(b.finishedAt.slice(0,4))===selectedYear);
+      const yearPages=yearDone.reduce((s,b)=>s+(Number(b.pages)||0),0);
+      const rated=yearDone.filter(b=>Number(b.rating)>0);
       const avg=rated.reduce((s,b)=>s+Number(b.rating),0)/(rated.length||1);
+
       $("#dashboardSummary").textContent =
-        `登録：${books.length}冊\n`+
-        `読了：${done.length}冊\n`+
+        `${selectedYear}年の読了：${yearDone.length}冊\n`+
+        `${selectedYear}年の読了ページ：${yearPages.toLocaleString()}ページ\n`+
+        `年間平均評価：${rated.length?avg.toFixed(1):"未評価"} / 5\n\n`+
+        `全登録：${books.length}冊\n`+
+        `全期間の読了：${done.length}冊\n`+
         `読書中：${books.filter(b=>b.status==="reading").length}冊\n`+
-        `読みたい：${books.filter(b=>b.status==="want").length}冊\n`+
-        `読了ページ：${totalPages.toLocaleString()}ページ\n`+
-        `平均評価：${rated.length?avg.toFixed(1):"未評価"} / 5`;
+        `読みたい：${books.filter(b=>b.status==="want").length}冊`;
     }
 
     const recommendationPool = {
@@ -1828,6 +1904,67 @@
       badge.className="plan-chip lite";
     }
 
+
+    function buildFinishedDateAssist(){
+      const year=$("#finishedYearAssist");
+      const month=$("#finishedMonthAssist");
+      const day=$("#finishedDayAssist");
+      const input=$("#finishedAt");
+      if(!year||!month||!day||!input) return;
+
+      const current=new Date().getFullYear();
+      const pastYears=[];
+      for(let y=current;y>=1950;y--) pastYears.push(y);
+      const futureYears=[];
+      for(let y=current+1;y<=current+20;y++) futureYears.push(y);
+
+      year.innerHTML=
+        `<option value="">年を選択</option>`+
+        pastYears.map(y=>`<option value="${y}">${y}年</option>`).join("")+
+        `<option disabled>── 未来 ──</option>`+
+        futureYears.map(y=>`<option value="${y}">${y}年</option>`).join("");
+
+      month.innerHTML=`<option value="">月</option>`+
+        Array.from({length:12},(_,i)=>`<option value="${String(i+1).padStart(2,"0")}">${i+1}月</option>`).join("");
+
+      function rebuildDays(){
+        const y=Number(year.value);
+        const m=Number(month.value);
+        const previous=day.value;
+        const count=y&&m ? new Date(y,m,0).getDate() : 31;
+        day.innerHTML=`<option value="">日</option>`+
+          Array.from({length:count},(_,i)=>`<option value="${String(i+1).padStart(2,"0")}">${i+1}日</option>`).join("");
+        if([...day.options].some(o=>o.value===previous)) day.value=previous;
+      }
+
+      function syncToInput(){
+        if(year.value&&month.value&&day.value){
+          input.value=`${year.value}-${month.value}-${day.value}`;
+          input.dispatchEvent(new Event("change",{bubbles:true}));
+        }
+      }
+
+      function syncFromInput(){
+        const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(input.value||"");
+        if(!match){
+          year.value="";month.value="";rebuildDays();day.value="";
+          return;
+        }
+        year.value=match[1];
+        month.value=match[2];
+        rebuildDays();
+        day.value=match[3];
+      }
+
+      year.addEventListener("change",()=>{rebuildDays();syncToInput();});
+      month.addEventListener("change",()=>{rebuildDays();syncToInput();});
+      day.addEventListener("change",syncToInput);
+      input.addEventListener("change",syncFromInput);
+
+      rebuildDays();
+      syncFromInput();
+    }
+
     function renderAll(){ renderBooks();renderStats();renderDashboard();renderAnalysis();renderPlan(); }
 
     function openModal(book=null){
@@ -1840,6 +1977,7 @@
       $("#rating").value=book?.rating||0;
       $("#pages").value=book?.pages||"";
       $("#finishedAt").value=book?.finishedAt||"";
+      setTimeout(buildFinishedDateAssist,0);
       $("#tags").value=(book?.tags||[]).join(", ");
       $("#memo").value=book?.memo||"";
       $("#quote").value=book?.quote||"";
@@ -2314,6 +2452,7 @@
     $("#bookSearchBtn").onclick=searchBooks;
     $("#bookSearchInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchBooks();}});
     $("#chartTypeSelect").addEventListener("change",renderDashboard);
+    $("#dashboardYearSelect").addEventListener("change",renderDashboard);
 
     function setAuthMode(mode){
       authMode=mode;
@@ -2417,6 +2556,7 @@
 
     function escapeHtml(v=""){return String(v).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
     renderAll();
+    buildFinishedDateAssist();
     initAuth();
   </script>
 </body>
