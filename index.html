@@ -1829,6 +1829,7 @@
         window.gtag("event", name, {
           send_to:"G-FJZPY111P3",
           transport_type:"beacon",
+          app_version:"book-event-fix-v3",
           ...params
         });
       }catch(error){
@@ -2425,16 +2426,25 @@
       const isNewBook=!wasEditing;
       const previousStatus=i>=0 ? books[i].status : null;
       if(i>=0) books[i]=data; else books.unshift(data);
-      save();
-      closeModal();
 
-      trackYondaEvent("book_saved", {
+      // 保存成功をlocalStorageへの書き込み完了で確定する。
+      // 画面再描画で問題が起きても、保存イベントが失われない順序にする。
+      try{
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
+      }catch(error){
+        console.error("本の保存に失敗しました:", error);
+        alert("本を保存できませんでした。ブラウザの保存容量や設定を確認してください。");
+        return;
+      }
+
+      trackYondaEvent(isNewBook ? "book_added" : "book_updated", {
         operation:isNewBook ? "create" : "update",
         status:data.status,
         has_isbn:Boolean(data.isbn),
         source:data.source || "manual"
       });
-      trackYondaEvent(isNewBook ? "book_added" : "book_updated", {
+      trackYondaEvent("book_saved", {
+        operation:isNewBook ? "create" : "update",
         status:data.status,
         has_isbn:Boolean(data.isbn),
         source:data.source || "manual"
@@ -2444,6 +2454,16 @@
           source:data.source || "manual"
         });
       }
+
+      closeModal();
+
+      // 保存・計測が完了してから表示更新とクラウド同期を行う。
+      try{
+        renderAll();
+      }catch(error){
+        console.error("本保存後の画面更新に失敗しました:", error);
+      }
+      scheduleCloudSync();
     });
 
     $("#deleteBtn").addEventListener("click",()=>{
