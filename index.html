@@ -489,7 +489,14 @@
         max-width:none;
       }
     }
-    .settings-button{font-size:1.18rem;width:44px;height:44px;padding:0}
+    .topbar-actions{display:flex;align-items:center;gap:8px;flex:none}
+    .settings-button,
+    .header-add-button{
+      width:44px;height:44px;padding:0;border-radius:50%;
+      display:grid;place-items:center;line-height:1;flex:none;
+    }
+    .settings-button{font-size:1.18rem}
+    .header-add-button{font-size:1.55rem;font-weight:500;color:var(--accent)}
     .big-add-button{
       width:100%;border:0;border-radius:22px;padding:18px 20px;background:var(--accent);
       color:#fff;display:flex;align-items:center;gap:15px;text-align:left;
@@ -963,6 +970,41 @@
     .contact-status.error{color:var(--danger);font-weight:700}
     .contact-honeypot{position:absolute!important;left:-9999px!important;width:1px!important;height:1px!important;overflow:hidden!important}
 
+    /* スマホ表示専用：PC表示には影響させない */
+    @media(max-width:620px){
+      .app{padding:14px 12px 102px}
+      .topbar{gap:10px;margin-bottom:12px}
+      .brand{gap:9px;min-width:0}
+      .logo{width:40px;height:40px;border-radius:13px}
+      .brand h1{font-size:1.08rem;line-height:1.15}
+      .brand p{margin-top:1px;font-size:.68rem;line-height:1.25}
+      .brand-title-row{gap:6px}
+      .brand-title-row .plan-chip{height:24px;min-width:43px;padding:0 8px;font-size:.64rem}
+      .topbar-actions{gap:6px}
+      .settings-button,
+      .header-add-button{width:40px;height:40px}
+      .settings-button{font-size:1.05rem}
+      .header-add-button{font-size:1.38rem}
+
+      .hero{padding:16px 17px;gap:8px;margin-bottom:14px;border-radius:22px}
+      .hero h2{font-size:1.22rem;line-height:1.35}
+      .hero p{margin-top:4px;font-size:.74rem;line-height:1.55}
+      .panel{padding:15px}
+      .panel-head{margin-bottom:11px}
+      .panel h3,.sheet h3{font-size:.98rem;line-height:1.35}
+      .tiny{font-size:.69rem}
+
+      /* 設定画面のアカウント操作ボタンだけをスマホ向けに微調整 */
+      #settingsModal .account-actions{gap:7px}
+      #settingsModal .account-actions button{
+        min-width:0;
+        padding:10px 7px;
+        font-size:.74rem;
+        line-height:1.2;
+        white-space:nowrap;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -980,7 +1022,10 @@
           <p>あなただけの本棚</p>
         </div>
       </div>
-      <button class="ghost settings-button" id="settingsBtn" aria-label="設定">⚙</button>
+      <div class="topbar-actions">
+        <button class="ghost header-add-button" id="headerAddBtn" type="button" aria-label="本を追加" title="本を追加">＋</button>
+        <button class="ghost settings-button" id="settingsBtn" type="button" aria-label="設定" title="設定">⚙</button>
+      </div>
     </header>
 
     <section class="hero">
@@ -1886,7 +1931,7 @@
       $("#showAllBooksBtn").style.display = data.length > 10 ? "inline-flex" : "none";
 
       if(!preview.length){
-        list.innerHTML=`<div class="shelf-row"><div class="shelf-empty"><span class="shelf-empty-title">さて、最初の一冊を登録しましょう</span><span class="shelf-empty-guide">右の＋ボタンから最初の一冊を登録できます</span></div></div>`;
+        list.innerHTML=`<div class="shelf-row"><div class="shelf-empty"><span class="shelf-empty-title">さて、最初の一冊を登録しましょう</span><span class="shelf-empty-guide">＋ボタンから最初の一冊を登録できます</span></div></div>`;
         return;
       }
 
@@ -2378,6 +2423,7 @@
       if(e.target.id==="allBooksModal") closeAllBooksModal();
     });
 
+    $("#headerAddBtn").addEventListener("click",()=>openModal());
     $("#settingsBtn").addEventListener("click",openSettings);
     $("#closeSettings").onclick=closeSettings;
     $("#settingsModal").addEventListener("click",e=>{if(e.target.id==="settingsModal")closeSettings()});
