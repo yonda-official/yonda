@@ -2232,6 +2232,17 @@
       return 0;
     }
 
+    // 外部書誌APIでページ数が欠落する場合に備えた、ISBNで確認済みの補完値。
+    // 同一ISBNの紙書籍にのみ適用し、電子版・別版には流用しない。
+    const VERIFIED_PAGE_COUNTS={
+      "9784478025819":296
+    };
+
+    function getVerifiedPageCount(isbn){
+      const normalized=String(isbn||"").replace(/[^0-9Xx]/g,"");
+      return Number(VERIFIED_PAGE_COUNTS[normalized])||0;
+    }
+
     async function fetchGoogleBooksPageCountByIsbn(isbn){
       try{
         const items=await fetchGoogleBooks(String(isbn),false);
@@ -2264,8 +2275,12 @@
         clearTimeout(timer);
       }
 
-      // openBDにページ数がない場合のみ、無料のGoogle BooksをISBN検索で補完
-      return await fetchGoogleBooksPageCountByIsbn(normalized);
+      // openBDにページ数がない場合は、無料のGoogle BooksをISBN検索で補完
+      const googlePages=await fetchGoogleBooksPageCountByIsbn(normalized);
+      if(googlePages) return googlePages;
+
+      // 両APIで欠落する既知の紙書籍は、確認済みISBN値を最終フォールバックにする
+      return getVerifiedPageCount(normalized);
     }
 
     window.selectSearchResult=async(payload)=>{
