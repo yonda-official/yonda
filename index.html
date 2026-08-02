@@ -356,32 +356,55 @@
     .reorder-sheet{width:min(96vw,980px);background:#f8f4ec}
     .reorder-help{margin:0 0 12px;color:var(--muted);font-size:.72rem;line-height:1.55}
     .reorder-strip{
-      display:flex;align-items:stretch;gap:10px;overflow-x:auto;overflow-y:hidden;
-      padding:10px 10px 16px;border:1px solid var(--line);border-radius:18px;background:#fff;
-      scrollbar-gutter:stable;overscroll-behavior-x:contain;
+      position:relative;display:flex;align-items:flex-end;gap:5px;overflow-x:auto;overflow-y:hidden;
+      min-height:292px;padding:16px 14px 34px;border:1px solid var(--line);border-radius:18px;background:#fff;
+      scrollbar-gutter:stable;overscroll-behavior-x:contain;scroll-behavior:auto;
+    }
+    .reorder-strip::after{
+      content:"";position:absolute;left:8px;right:8px;bottom:14px;height:18px;z-index:0;
+      border-radius:2px 2px 5px 5px;
+      background:linear-gradient(180deg,#c9a57e 0%,#b68a5e 38%,#9f7147 72%,#875b37 100%);
+      box-shadow:0 6px 10px rgba(57,35,17,.16),inset 0 2px rgba(255,255,255,.16),inset 0 -2px rgba(0,0,0,.12);
     }
     .reorder-card{
-      flex:0 0 168px;min-height:96px;display:grid;grid-template-columns:38px minmax(0,1fr);
-      align-items:stretch;border:1px solid var(--line);border-radius:15px;background:var(--panel);
-      box-shadow:0 5px 14px rgba(54,62,49,.07);overflow:hidden;
+      position:relative;z-index:1;flex:0 0 54px;height:242px;display:grid;grid-template-rows:42px minmax(0,1fr);
+      border:1px solid rgba(101,78,53,.22);border-radius:5px 5px 2px 2px;overflow:hidden;
+      background:linear-gradient(90deg,rgba(255,255,255,.38),transparent 28%,rgba(85,58,32,.07)),#eadfca;
+      box-shadow:inset 3px 0 rgba(255,255,255,.34),inset -3px 0 rgba(73,49,28,.10),1px 2px 5px rgba(24,15,8,.17);
+      transition:transform .14s ease,opacity .14s ease,box-shadow .14s ease;
+      user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
     }
-    .reorder-card.dragging{opacity:.52;transform:scale(.98)}
+    .reorder-card:nth-child(4n+2){background:linear-gradient(90deg,rgba(255,255,255,.36),transparent 28%,rgba(85,58,32,.06)),#e4e1d9}
+    .reorder-card:nth-child(4n+3){background:linear-gradient(90deg,rgba(255,255,255,.36),transparent 28%,rgba(85,58,32,.06)),#dfe6d2}
+    .reorder-card:nth-child(4n+4){background:linear-gradient(90deg,rgba(255,255,255,.36),transparent 28%,rgba(85,58,32,.06)),#eee4d8}
+    .reorder-card.dragging{opacity:.66;transform:translateY(-8px) scale(1.04);box-shadow:0 12px 22px rgba(54,62,49,.20);z-index:4}
     .reorder-handle{
-      border:0;border-right:1px solid var(--line);border-radius:0;background:#f1ece2;color:#6e756a;
-      display:grid;place-items:center;font-size:1.12rem;line-height:1;cursor:grab;
-      touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+      width:100%;height:42px;border:0;border-bottom:1px solid rgba(101,78,53,.16);border-radius:0;
+      background:rgba(255,255,255,.26);color:#566052;display:grid;place-items:center;
+      font-size:1.2rem;line-height:1;cursor:grab;touch-action:none;
+      user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
     }
-    .reorder-handle:active{cursor:grabbing;background:#e6eee1;color:var(--accent)}
-    .reorder-card-copy{min-width:0;padding:11px 10px;display:flex;flex-direction:column;justify-content:center;gap:5px}
-    .reorder-card-copy strong{font-size:.78rem;line-height:1.45;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
-    .reorder-card-copy span{font-size:.66rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .reorder-empty{padding:34px 18px;color:var(--muted);text-align:center;width:100%}
+    .reorder-handle:active{cursor:grabbing;background:rgba(231,239,226,.86);color:var(--accent)}
+    .reorder-spine-title{
+      min-width:0;padding:9px 7px 10px;display:flex;align-items:flex-start;justify-content:center;
+      writing-mode:vertical-rl;text-orientation:mixed;overflow:hidden;color:#2f281f;
+      font-size:.72rem;font-weight:700;line-height:1.12;letter-spacing:.02em;text-align:left;
+    }
+    .reorder-spine-title.title-medium{font-size:.64rem}
+    .reorder-spine-title.title-long{font-size:.56rem;line-height:1.06;letter-spacing:0}
+    .reorder-spine-title.title-xlong{font-size:.49rem;line-height:1.02;letter-spacing:-.01em}
+    .reorder-empty{position:relative;z-index:1;padding:86px 18px;color:var(--muted);text-align:center;width:100%}
     @media(max-width:620px){
       .shelf-head-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}
       .shelf-head-actions button{width:100%;padding-left:8px;padding-right:8px}
       .reorder-sheet{width:100%}
-      .reorder-card{flex-basis:148px;grid-template-columns:42px minmax(0,1fr)}
-      .reorder-strip{padding-left:8px;padding-right:8px}
+      .reorder-strip{min-height:270px;padding:14px 10px 32px;gap:4px}
+      .reorder-card{flex-basis:48px;height:224px;grid-template-rows:40px minmax(0,1fr)}
+      .reorder-handle{height:40px}
+      .reorder-spine-title{font-size:.66rem;padding-left:6px;padding-right:6px}
+      .reorder-spine-title.title-medium{font-size:.59rem}
+      .reorder-spine-title.title-long{font-size:.52rem}
+      .reorder-spine-title.title-xlong{font-size:.46rem}
     }
     /* スマホ版の本棚指定を最終表示値に統合 */
     @media(max-width:620px){
@@ -1396,7 +1419,7 @@
         </div>
         <button class="ghost" id="closeReorderModal">完了</button>
       </div>
-      <p class="reorder-help">各本の左側にある三本線をつかみ、左右へ動かして順番を変更します。変更は自動で保存されます。</p>
+      <p class="reorder-help">各本の上部にある三本線をつかみ、左右へ動かして順番を変更します。変更は自動で保存されます。</p>
       <div class="reorder-strip" id="reorderBookList"></div>
     </div>
   </div>
@@ -2216,12 +2239,11 @@
     }
 
     function reorderCardHtml(book){
+      const title=String(book.title||"無題");
+      const lengthClass=title.length>28?"title-xlong":title.length>20?"title-long":title.length>13?"title-medium":"";
       return `<div class="reorder-card" data-book-id="${escapeHtml(book.id)}">
-        <button class="reorder-handle" type="button" aria-label="${escapeHtml(book.title)}を移動" title="左右にドラッグして移動">☰</button>
-        <div class="reorder-card-copy">
-          <strong>${escapeHtml(book.title)}</strong>
-          <span>${escapeHtml(book.author||"著者未登録")}</span>
-        </div>
+        <button class="reorder-handle" type="button" aria-label="${escapeHtml(title)}を左右に移動" title="左右にドラッグして移動">☰</button>
+        <div class="reorder-spine-title ${lengthClass}">${escapeHtml(title)}</div>
       </div>`;
     }
 
