@@ -864,6 +864,12 @@
       letter-spacing:.02em;
     }
 
+    .finished-date-picker{
+      margin-top:7px;
+      height:46px!important;
+      min-height:46px!important;
+    }
+
   
     /* 本の登録フォーム：横並び項目の高さと位置を統一 */
     #bookForm .two{
@@ -1002,6 +1008,24 @@
       .hero{padding:12px 14px;gap:8px;margin-bottom:10px;border-radius:22px}
       .hero h2{font-size:1.08rem;line-height:1.35}
       .hero p{margin-top:4px;font-size:.74rem;line-height:1.55}
+
+      /* 読了日の年月日をスマホ幅に収める */
+      #bookForm .jp-date-row{
+        grid-template-columns:minmax(0,1.45fr) minmax(0,.78fr) minmax(0,.78fr);
+        gap:5px;
+      }
+      #bookForm .jp-date-row select{
+        width:100%;
+        min-width:0!important;
+        padding-left:4px!important;
+        padding-right:22px!important;
+        font-size:.68rem!important;
+        letter-spacing:-.02em;
+      }
+      #bookForm .finished-date-picker{
+        font-size:.76rem;
+      }
+
       .spine{
         display:flex;
         align-items:center;
@@ -1741,6 +1765,7 @@
           </label>
           <label class="finished-date-wrap">読了日
             <input class="field jp-date-display" id="finishedAtDisplay" type="text" inputmode="numeric" placeholder="yyyy/mm/dd" maxlength="10" />
+            <input class="field finished-date-picker" id="finishedAtPicker" type="date" aria-label="カレンダーから読了日を選択" />
             <input id="finishedAt" type="hidden" />
             <span class="jp-date-row" aria-label="読了日の補助選択">
               <select id="finishedYearAssist" aria-label="読了年"></select>
@@ -1805,7 +1830,11 @@
     function trackYondaEvent(name, params = {}){
       if(typeof window.gtag !== "function") return;
       try{
-        window.gtag("event", name, params);
+        window.gtag("event", name, {
+          send_to:"G-FJZPY111P3",
+          transport_type:"beacon",
+          ...params
+        });
       }catch(error){
         console.warn("Yonda Analytics event error:", error);
       }
@@ -2010,10 +2039,13 @@
     function renderBooks(){
       const list=$("#bookList");
       const data=filteredBooks();
-      const preview=data.slice(0,10);
+
+      // 保存配列は新しい順のまま維持し、表示時だけ古い本を左・新しい本を右に並べる。
+      // ホームは最新10冊を選び、その中で最新本が右端に来るよう反転する。
+      const preview=data.slice(0,10).reverse();
 
       $("#shelfPreviewCount").textContent =
-        data.length > 10 ? `最初の10冊を表示・全${data.length}冊` : `${data.length}冊を表示`;
+        data.length > 10 ? `最新10冊を表示・全${data.length}冊` : `${data.length}冊を表示`;
       $("#showAllBooksBtn").style.display = data.length > 10 ? "inline-flex" : "none";
 
       if(!preview.length){
@@ -2028,7 +2060,8 @@
     }
 
     function renderAllBookshelf(){
-      const data=filteredBooks();
+      // 全本棚では登録の古い順に左から並べ、最新本を最終段の右端へ追加する。
+      const data=[...filteredBooks()].reverse();
       $("#allBooksCount").textContent=`全${data.length}冊`;
       $("#allBookList").innerHTML=data.length
         ? renderShelfRows(data)
@@ -2305,12 +2338,21 @@
     function syncJapaneseFinishedDateDisplay(){
       const hidden=$("#finishedAt");
       const display=$("#finishedAtDisplay");
+      const picker=$("#finishedAtPicker");
       if(hidden&&display) display.value=isoToJapaneseDate(hidden.value);
+      if(hidden&&picker) picker.value=hidden.value||"";
+    }
+
+    function markBookAsFinishedWhenDateExists(){
+      const hidden=$("#finishedAt");
+      const status=$("#status");
+      if(hidden?.value && status) status.value="done";
     }
 
     function bindJapaneseFinishedDateInput(){
       const hidden=$("#finishedAt");
       const display=$("#finishedAtDisplay");
+      const picker=$("#finishedAtPicker");
       if(!hidden||!display||display.dataset.bound==="1") return;
       display.dataset.bound="1";
 
@@ -2329,9 +2371,20 @@
           return;
         }
         hidden.value=iso;
+        markBookAsFinishedWhenDateExists();
         hidden.dispatchEvent(new Event("change",{bubbles:true}));
         syncJapaneseFinishedDateDisplay();
       });
+
+      if(picker && picker.dataset.bound!=="1"){
+        picker.dataset.bound="1";
+        picker.addEventListener("change",()=>{
+          hidden.value=picker.value||"";
+          markBookAsFinishedWhenDateExists();
+          hidden.dispatchEvent(new Event("change",{bubbles:true}));
+          syncJapaneseFinishedDateDisplay();
+        });
+      }
     }
 
     function updatePageFieldNote(){
@@ -2377,6 +2430,7 @@
       function syncToInput(){
         if(year.value&&month.value&&day.value){
           input.value=`${year.value}-${month.value}-${day.value}`;
+          markBookAsFinishedWhenDateExists();
           input.dispatchEvent(new Event("change",{bubbles:true}));
           syncJapaneseFinishedDateDisplay();
         }
@@ -2416,6 +2470,7 @@
       $("#rating").value=book?.rating||0;
       $("#pages").value=book?.pages||"";
       $("#finishedAt").value=book?.finishedAt||"";
+      $("#finishedAtPicker").value=book?.finishedAt||"";
       setTimeout(()=>{buildFinishedDateAssist();bindJapaneseFinishedDateInput();syncJapaneseFinishedDateDisplay();updatePageFieldNote();},0);
       $("#tags").value=(book?.tags||[]).join(", ");
       $("#memo").value=book?.memo||"";
@@ -2434,6 +2489,7 @@
 
     $("#bookForm").addEventListener("submit",e=>{
       e.preventDefault();
+      const wasEditing=Boolean(currentEditId);
       const searchMeta=JSON.parse($("#bookForm").dataset.searchMeta||"{}");
       const data={
         id:currentEditId||crypto.randomUUID(),
@@ -2452,14 +2508,21 @@
         source:searchMeta.source||"",
         sourceUrl:searchMeta.sourceUrl||""
       };
+      if(data.finishedAt) data.status="done";
       if(data.status==="done" && !data.finishedAt) data.finishedAt=new Date().toISOString().slice(0,10);
       const i=books.findIndex(b=>b.id===data.id);
-      const isNewBook=i<0;
+      const isNewBook=!wasEditing;
       const previousStatus=i>=0 ? books[i].status : null;
       if(i>=0) books[i]=data; else books.unshift(data);
       save();
       closeModal();
 
+      trackYondaEvent("book_saved", {
+        operation:isNewBook ? "create" : "update",
+        status:data.status,
+        has_isbn:Boolean(data.isbn),
+        source:data.source || "manual"
+      });
       trackYondaEvent(isNewBook ? "book_added" : "book_updated", {
         status:data.status,
         has_isbn:Boolean(data.isbn),
