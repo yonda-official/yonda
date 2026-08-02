@@ -743,6 +743,9 @@
     .auth-tabs button.active{background:#e7efe2;color:var(--accent);border-color:rgba(111,143,104,.4);font-weight:700}
     .auth-message{min-height:1.4em;margin-top:10px;font-size:.74rem;line-height:1.5;color:var(--muted)}
     .auth-message.error{color:var(--danger)}
+    .auth-mail-notice{display:none;margin:10px 0 2px;padding:11px 12px;border:1px solid rgba(111,143,104,.24);border-radius:13px;background:#f2f6ee;color:#5f685a;font-size:.71rem;line-height:1.65}
+    .auth-mail-notice.visible{display:block}
+    .auth-mail-notice strong{color:var(--text)}
     .account-status{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--panel-2)}
     .account-status strong{display:block;font-size:.82rem}
     .account-status span{display:block;margin-top:3px;font-size:.7rem;color:var(--muted);word-break:break-all}
@@ -1231,6 +1234,10 @@
       <div class="auth-tabs">
         <button type="button" class="active" id="loginTabBtn">ログイン</button>
         <button type="button" id="signupTabBtn">新規登録</button>
+      </div>
+      <div class="auth-mail-notice" id="authMailNotice">
+        <strong>確認メールについて</strong><br>
+        新規登録後、送信者名「Supabase Auth」から英語の確認メールが届きます。Yonda?の登録確認メールですので、本文内の確認リンクを開いてください。
       </div>
       <form id="authForm" class="form-grid">
         <label>メールアドレス<input class="field" id="authEmail" type="email" autocomplete="email" required placeholder="example@email.com"></label>
@@ -2177,7 +2184,37 @@
         box.innerHTML='<div class="note">楽天ブックス検索に接続できませんでした。少し時間を置いて再検索するか、下の欄へ手入力してください。</div>';
       }
     }
-    window.selectSearchResult=(payload)=>{
+    function findOpenBdPageCount(record){
+      const extents=record?.onix?.DescriptiveDetail?.Extent;
+      const list=Array.isArray(extents)?extents:(extents?[extents]:[]);
+      for(const extent of list){
+        const value=Number(String(extent?.ExtentValue??"").replace(/[^0-9]/g,""));
+        if(Number.isFinite(value)&&value>0) return value;
+      }
+      const summaryPages=Number(record?.summary?.pages||record?.summary?.page||0);
+      return Number.isFinite(summaryPages)&&summaryPages>0?summaryPages:0;
+    }
+
+    async function fetchOpenBdPageCount(isbn){
+      const normalized=String(isbn||"").replace(/[^0-9Xx]/g,"");
+      if(!normalized) return 0;
+      const controller=new AbortController();
+      const timer=setTimeout(()=>controller.abort(),8000);
+      try{
+        const response=await fetch(`https://api.openbd.jp/v1/get?isbn=${encodeURIComponent(normalized)}`,{signal:controller.signal});
+        if(!response.ok) return 0;
+        const data=await response.json();
+        const record=Array.isArray(data)?data[0]:null;
+        return record?findOpenBdPageCount(record):0;
+      }catch(error){
+        console.warn("openBD page lookup failed",error);
+        return 0;
+      }finally{
+        clearTimeout(timer);
+      }
+    }
+
+    window.selectSearchResult=async(payload)=>{
       const d=JSON.parse(decodeURIComponent(payload));
       $("#title").value=d.title||"";
       $("#author").value=d.author||"";
@@ -2185,7 +2222,25 @@
       $("#tags").value=(d.tags||[]).join(", ");
       $("#coverUrl").value=d.coverUrl||"";
       $("#bookForm").dataset.searchMeta=JSON.stringify({isbn:d.isbn||"",publisher:d.publisher||"",source:d.source||"",sourceUrl:d.sourceUrl||""});
-      $("#bookSearchResults").innerHTML='<div class="note">選択した本の情報を下へ反映しました。状態やメモを確認して保存してください。</div>';
+
+      const resultBox=$("#bookSearchResults");
+      if(Number(d.pages)>0){
+        resultBox.innerHTML='<div class="note">選択した本の情報を下へ反映しました。状態やメモを確認して保存してください。</div>';
+        return;
+      }
+
+      if(d.isbn){
+        resultBox.innerHTML='<div class="note">選択した本の情報を反映しました。ページ数を確認しています...</div>';
+        const pageCount=await fetchOpenBdPageCount(d.isbn);
+        if(pageCount>0){
+          $("#pages").value=pageCount;
+          resultBox.innerHTML='<div class="note">選択した本の情報とページ数を反映しました。状態やメモを確認して保存してください。</div>';
+        }else{
+          resultBox.innerHTML='<div class="note">選択した本の情報を反映しました。ページ数は取得できなかったため、必要に応じて手入力してください。</div>';
+        }
+      }else{
+        resultBox.innerHTML='<div class="note">選択した本の情報を反映しました。ページ数は取得できなかったため、必要に応じて手入力してください。</div>';
+      }
     };
     $("#bookSearchBtn").onclick=searchBooks;
     $("#bookSearchInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchBooks();}});
@@ -2197,6 +2252,7 @@
       $("#signupTabBtn").classList.toggle("active",mode==="signup");
       $("#authSubmitBtn").textContent=mode==="login"?"ログインする":"無料アカウントを作成";
       $("#authPassword").autocomplete=mode==="login"?"current-password":"new-password";
+      $("#authMailNotice").classList.toggle("visible",mode==="signup");
       $("#authMessage").textContent="";
     }
     function openAuthModal(){
@@ -2245,7 +2301,7 @@
       const result=authMode==="login"?await supabaseClient.auth.signInWithPassword({email,password}):await supabaseClient.auth.signUp({email,password,options:{emailRedirectTo:location.href.split('#')[0]}});
       $("#authSubmitBtn").disabled=false;
       if(result.error){message.textContent=result.error.message;message.classList.add("error");return;}
-      if(authMode==="signup"&&!result.data.session){message.textContent="確認メールを送りました。メール内のリンクを開いて登録を完了してください。";return;}
+      if(authMode==="signup"&&!result.data.session){message.textContent="「Supabase Auth」からYonda?の確認メールを送りました。英語のメール本文内にある確認リンクを開いて登録を完了してください。";return;}
       message.textContent="ログインしました。端末内のデータをクラウドへ同期します。";
       setTimeout(closeAuthModal,500);
     });
