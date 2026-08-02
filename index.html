@@ -1340,9 +1340,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     // SupabaseのProject URLとPublishable keyを入力するとログイン・同期が有効になります。
-    const SUPABASE_URL = "";
-    const SUPABASE_PUBLISHABLE_KEY = "";
-    const CLOUD_TABLE = "yonda_user_data";
+    const SUPABASE_URL = "https://fuxnixhnnvvkhctrdzhg.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_1bwZVyICb5zHhasbgC7opA_t8IqLwWZ";
 
     // Amazonアソシエイト登録後、下の空欄を自分のトラッキングIDに置き換えてください。
     // 例: "yonda-22"（実際に発行されたIDを使用）
@@ -1372,44 +1371,147 @@
     const $ = s => document.querySelector(s);
     const $$ = s => [...document.querySelectorAll(s)];
 
-    function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(books)); renderAll(); scheduleCloudSync(); }
-    function buildCloudPayload(){
-      return {books,genres,monthlyGoal,profile:JSON.parse(localStorage.getItem(PROFILE_KEY)||'{}'),savedAt:new Date().toISOString()};
+    function save(){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
+      renderAll();
+      scheduleCloudSync();
     }
-    function applyCloudPayload(payload){
-      if(!payload) return;
-      if(Array.isArray(payload.books)){books=payload.books;localStorage.setItem(STORAGE_KEY,JSON.stringify(books));}
-      if(Array.isArray(payload.genres)){genres=payload.genres;localStorage.setItem(GENRES_KEY,JSON.stringify(genres));}
-      if(Number.isFinite(Number(payload.monthlyGoal))){monthlyGoal=Number(payload.monthlyGoal);localStorage.setItem(GOAL_KEY,String(monthlyGoal));}
-      if(payload.profile){localStorage.setItem(PROFILE_KEY,JSON.stringify(payload.profile));}
+    function getLocalProfile(){
+      return JSON.parse(localStorage.getItem(PROFILE_KEY)||'{}');
+    }
+    function encodeMemo(book){
+      return JSON.stringify({memo:book.memo||"",quote:book.quote||""});
+    }
+    function decodeMemo(value){
+      try{
+        const parsed=JSON.parse(value||'{}');
+        if(parsed&&typeof parsed==='object') return {memo:parsed.memo||"",quote:parsed.quote||""};
+      }catch(_e){}
+      return {memo:value||"",quote:""};
+    }
+    function toCloudBook(book){
+      return {
+        id:book.id,
+        user_id:currentUser.id,
+        title:book.title||"",
+        author:book.author||"",
+        isbn:book.isbn||null,
+        publisher:book.publisher||null,
+        cover_url:book.coverUrl||null,
+        status:book.status==='done'?'finished':book.status,
+        rating:Number(book.rating)||null,
+        total_pages:Number(book.pages)||0,
+        current_page:Number(book.currentPage)||0,
+        finished_date:book.finishedAt||null,
+        tags:Array.isArray(book.tags)?book.tags:[],
+        memo:encodeMemo(book),
+        source:book.source||null,
+        source_url:book.sourceUrl||null,
+        updated_at:new Date().toISOString()
+      };
+    }
+    function fromCloudBook(row){
+      const note=decodeMemo(row.memo);
+      return {
+        id:row.id,
+        title:row.title||"",
+        author:row.author||"",
+        isbn:row.isbn||"",
+        publisher:row.publisher||"",
+        status:row.status==='finished'?'done':row.status,
+        rating:Number(row.rating)||0,
+        pages:Number(row.total_pages)||0,
+        currentPage:Number(row.current_page)||0,
+        finishedAt:row.finished_date||"",
+        tags:Array.isArray(row.tags)?row.tags:[],
+        memo:note.memo,
+        quote:note.quote,
+        coverUrl:row.cover_url||"",
+        source:row.source||"",
+        sourceUrl:row.source_url||""
+      };
+    }
+    function applyCloudState(profileRow,bookRows){
+      if(profileRow){
+        monthlyGoal=Number(profileRow.monthly_goal)||0;
+        genres=Array.isArray(profileRow.custom_genres)?profileRow.custom_genres:genres;
+        const storedProfile=profileRow.settings?.profile||{};
+        localStorage.setItem(PROFILE_KEY,JSON.stringify(storedProfile));
+        localStorage.setItem(GOAL_KEY,String(monthlyGoal));
+        localStorage.setItem(GENRES_KEY,JSON.stringify(genres));
+      }
+      books=(bookRows||[]).map(fromCloudBook);
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(books));
       renderAll();
     }
     function scheduleCloudSync(){
       if(!currentUser || !supabaseClient || cloudLoading) return;
       clearTimeout(cloudSyncTimer);
-      cloudSyncTimer=setTimeout(syncToCloud,500);
+      cloudSyncTimer=setTimeout(syncToCloud,600);
     }
     async function syncToCloud(){
-      if(!currentUser || !supabaseClient) return;
-      const {error}=await supabaseClient.from(CLOUD_TABLE).upsert({user_id:currentUser.id,payload:buildCloudPayload(),updated_at:new Date().toISOString()},{onConflict:'user_id'});
-      if(error) console.error('Yonda cloud sync error',error);
+      if(!currentUser || !supabaseClient || cloudLoading) return;
+      const profile=getLocalProfile();
+      const profilePayload={
+        user_id:currentUser.id,
+        display_name:profile.name||null,
+        monthly_goal:Number(monthlyGoal)||0,
+        latest_note:'',
+        custom_genres:genres,
+        settings:{profile,savedAt:new Date().toISOString()},
+        updated_at:new Date().toISOString()
+      };
+      const {error:profileError}=await supabaseClient.from('profiles').upsert(profilePayload,{onConflict:'user_id'});
+      if(profileError){console.error('Yonda profile sync error',profileError);return;}
+
+      const cloudBooks=books.map(toCloudBook);
+      if(cloudBooks.length){
+        const {error:upsertError}=await supabaseClient.from('books').upsert(cloudBooks,{onConflict:'id'});
+        if(upsertError){console.error('Yonda books sync error',upsertError);return;}
+      }
+      const ids=books.map(book=>book.id);
+      let deleteQuery=supabaseClient.from('books').delete().eq('user_id',currentUser.id);
+      if(ids.length) deleteQuery=deleteQuery.not('id','in',`(${ids.join(',')})`);
+      const {error:deleteError}=await deleteQuery;
+      if(deleteError) console.error('Yonda cloud cleanup error',deleteError);
+    }
+    async function fetchCloudState(){
+      const [{data:profileRow,error:profileError},{data:bookRows,error:booksError}]=await Promise.all([
+        supabaseClient.from('profiles').select('*').eq('user_id',currentUser.id).maybeSingle(),
+        supabaseClient.from('books').select('*').eq('user_id',currentUser.id).order('updated_at',{ascending:false})
+      ]);
+      if(profileError) throw profileError;
+      if(booksError) throw booksError;
+      return {profileRow,bookRows:bookRows||[]};
     }
     async function loadCloudData(){
       if(!currentUser || !supabaseClient) return;
       cloudLoading=true;
-      const {data,error}=await supabaseClient.from(CLOUD_TABLE).select('payload').eq('user_id',currentUser.id).maybeSingle();
-      cloudLoading=false;
-      if(error){console.error('Yonda cloud load error',error);return;}
-      if(data?.payload){
-        const localHasData=books.length>0;
-        if(localHasData && !localStorage.getItem('yonda_cloud_migrated_v1')){
+      try{
+        const {profileRow,bookRows}=await fetchCloudState();
+        const cloudHasData=Boolean(profileRow)||bookRows.length>0;
+        const localHasData=books.length>0||Boolean(localStorage.getItem(PROFILE_KEY));
+        const migrationKey=`yonda_cloud_migrated_${currentUser.id}`;
+        if(!localStorage.getItem(migrationKey) && localHasData && cloudHasData){
           const migrate=confirm('この端末の読書データをクラウドへ保存しますか？「キャンセル」を選ぶとクラウド側のデータを読み込みます。');
-          if(migrate){await syncToCloud();localStorage.setItem('yonda_cloud_migrated_v1','1');}
-          else{applyCloudPayload(data.payload);localStorage.setItem('yonda_cloud_migrated_v1','1');}
-        }else applyCloudPayload(data.payload);
-      }else{
-        await syncToCloud();
-        localStorage.setItem('yonda_cloud_migrated_v1','1');
+          if(migrate) await syncToCloud();
+          else applyCloudState(profileRow,bookRows);
+          localStorage.setItem(migrationKey,'1');
+        }else if(!localStorage.getItem(migrationKey) && localHasData && !cloudHasData){
+          await syncToCloud();
+          localStorage.setItem(migrationKey,'1');
+        }else if(cloudHasData){
+          applyCloudState(profileRow,bookRows);
+          localStorage.setItem(migrationKey,'1');
+        }else{
+          await syncToCloud();
+          localStorage.setItem(migrationKey,'1');
+        }
+      }catch(error){
+        console.error('Yonda cloud load error',error);
+        alert('クラウドデータの読み込みに失敗しました。通信状態を確認して再読み込みしてください。');
+      }finally{
+        cloudLoading=false;
       }
     }
 
@@ -1735,6 +1837,7 @@
       $("#memo").value=book?.memo||"";
       $("#quote").value=book?.quote||"";
       $("#coverUrl").value=book?.coverUrl||"";
+      $("#bookForm").dataset.searchMeta=JSON.stringify({isbn:book?.isbn||"",publisher:book?.publisher||"",source:book?.source||"",sourceUrl:book?.sourceUrl||""});
       $("#bookSearchResults").innerHTML="";
       $("#bookSearchInput").value="";
       renderGenreSettings();
@@ -1747,6 +1850,7 @@
 
     $("#bookForm").addEventListener("submit",e=>{
       e.preventDefault();
+      const searchMeta=JSON.parse($("#bookForm").dataset.searchMeta||"{}");
       const data={
         id:currentEditId||crypto.randomUUID(),
         title:$("#title").value.trim(),
@@ -1758,7 +1862,11 @@
         tags:$("#tags").value.split(",").map(x=>x.trim()).filter(Boolean),
         memo:$("#memo").value.trim(),
         quote:$("#quote").value.trim(),
-        coverUrl:$("#coverUrl").value.trim()
+        coverUrl:$("#coverUrl").value.trim(),
+        isbn:searchMeta.isbn||"",
+        publisher:searchMeta.publisher||"",
+        source:searchMeta.source||"",
+        sourceUrl:searchMeta.sourceUrl||""
       };
       if(data.status==="done" && !data.finishedAt) data.finishedAt=new Date().toISOString().slice(0,10);
       const i=books.findIndex(b=>b.id===data.id);
@@ -2042,52 +2150,31 @@
     async function searchBooks(){
       const q=$("#bookSearchInput").value.trim();
       const box=$("#bookSearchResults");
-      if(!q){ box.innerHTML='<div class="note">検索語を入力してください。</div>'; return; }
-      box.innerHTML='<div class="note">日本語の書籍データを検索中...</div>';
+      if(!q){box.innerHTML='<div class="note">検索語を入力してください。</div>';return;}
+      if(!supabaseClient){box.innerHTML='<div class="note">書籍検索サービスの設定が完了していません。</div>';return;}
+      box.innerHTML='<div class="note">楽天ブックスから検索中...</div>';
       try{
-        let items=await fetchGoogleBooks(q,true);
-        if(items.length<3){
-          const broader=await fetchGoogleBooks(q,false);
-          const merged=[...items,...broader];
-          items=merged.filter((item,index,array)=>array.findIndex(other=>other.id===item.id)===index);
-        }
-
-        items=items
-          .map(item=>({item,score:scoreJapaneseBook(item,q)}))
-          .sort((a,b)=>b.score-a.score)
-          .map(entry=>entry.item)
-          .slice(0,8);
-
-        if(!items.length){
-          box.innerHTML='<div class="note">日本語の候補が見つかりませんでした。下の欄へ手入力してください。</div>';
-          return;
-        }
-
-        box.innerHTML=items.map(item=>{
-          const info=item.volumeInfo||{};
-          const title=info.title||"";
-          const author=(info.authors||[]).join("・");
-          const publishedYear=info.publishedDate?String(info.publishedDate).slice(0,4):"";
-          const cover=(info.imageLinks?.thumbnail||info.imageLinks?.smallThumbnail||"").replace(/^http:/,"https:");
+        const {data,error}=await supabaseClient.functions.invoke('search-books',{body:{keyword:q}});
+        if(error) throw error;
+        if(data?.error) throw new Error(data.error);
+        const items=Array.isArray(data?.books)?data.books:[];
+        if(!items.length){box.innerHTML='<div class="note">候補が見つかりませんでした。ISBNや著者名を追加して再検索するか、下の欄へ手入力してください。</div>';return;}
+        box.innerHTML=items.slice(0,10).map(item=>{
+          const cover=(item.coverUrl||'').replace(/^http:/,'https:');
           const payload=encodeURIComponent(JSON.stringify({
-            title,
-            author,
-            pages:Number(info.pageCount)||0,
-            tags:localizeBookCategories(info.categories),
-            coverUrl:cover
+            title:item.title||'',author:item.author||'',pages:Number(item.pages)||0,
+            tags:Array.isArray(item.tags)?item.tags:[],coverUrl:cover,
+            isbn:item.isbn||'',publisher:item.publisher||'',source:item.source||'rakuten-books',sourceUrl:item.itemUrl||''
           }));
           return `<div class="search-result">
             ${cover?`<img src="${escapeHtml(cover)}" alt="">`:`<div style="width:52px;height:68px;background:var(--panel-2);border-radius:8px;display:grid;place-items:center">📖</div>`}
-            <div>
-              <strong>${escapeHtml(title)}</strong>
-              <small>${escapeHtml(author||"著者不明")}${publishedYear?`・${escapeHtml(publishedYear)}`:""}${info.publisher?`・${escapeHtml(info.publisher)}`:""}</small>
-            </div>
+            <div><strong>${escapeHtml(item.title||'')}</strong><small>${escapeHtml(item.author||'著者不明')}${item.publisher?`・${escapeHtml(item.publisher)}`:''}${item.salesDate?`・${escapeHtml(item.salesDate)}`:''}</small></div>
             <button type="button" onclick="selectSearchResult('${payload}')">選択</button>
           </div>`;
-        }).join("");
-      }catch(e){
-        console.error(e);
-        box.innerHTML='<div class="note">書籍検索サービスに接続できませんでした。少し時間を置いて再検索するか、ISBNを入力するか、下の欄へ手入力してください。</div>';
+        }).join('');
+      }catch(error){
+        console.error(error);
+        box.innerHTML='<div class="note">楽天ブックス検索に接続できませんでした。少し時間を置いて再検索するか、下の欄へ手入力してください。</div>';
       }
     }
     window.selectSearchResult=(payload)=>{
@@ -2097,6 +2184,7 @@
       $("#pages").value=d.pages||"";
       $("#tags").value=(d.tags||[]).join(", ");
       $("#coverUrl").value=d.coverUrl||"";
+      $("#bookForm").dataset.searchMeta=JSON.stringify({isbn:d.isbn||"",publisher:d.publisher||"",source:d.source||"",sourceUrl:d.sourceUrl||""});
       $("#bookSearchResults").innerHTML='<div class="note">選択した本の情報を下へ反映しました。状態やメモを確認して保存してください。</div>';
     };
     $("#bookSearchBtn").onclick=searchBooks;
@@ -2120,7 +2208,7 @@
       const logged=Boolean(currentUser);
       $("#storageBanner").hidden=logged;
       $("#accountStatusTitle").textContent=logged?"ログイン済み":"未ログイン";
-      $("#accountStatusText").textContent=logged?(currentUser.email||"クラウド保存中"):"読書データはこの端末のブラウザ内に保存されています。";
+      $("#accountStatusText").textContent=logged?`${currentUser.email||"ログイン中"}・クラウド同期有効`:"読書データはこの端末のブラウザ内に保存されています。";
       $("#settingsAuthBtn").textContent=logged?"ログアウト":"ログイン";
     }
     async function initAuth(){
@@ -2133,7 +2221,16 @@
     }
     $("#openAuthBtn").onclick=()=>{setAuthMode("signup");openAuthModal();};
     $("#openLoginBtn").onclick=()=>{setAuthMode("login");openAuthModal();};
-    $("#settingsAuthBtn").onclick=async()=>{if(currentUser&&supabaseClient){await supabaseClient.auth.signOut();currentUser=null;updateAccountUI();}else openAuthModal();};
+    $("#settingsAuthBtn").onclick=async()=>{
+      if(currentUser&&supabaseClient){
+        await supabaseClient.auth.signOut();
+        currentUser=null;
+        books=[];
+        localStorage.setItem(STORAGE_KEY,'[]');
+        updateAccountUI();
+        renderAll();
+      }else openAuthModal();
+    };
     $("#closeAuthModal").onclick=closeAuthModal;
     $("#continueGuestBtn").onclick=closeAuthModal;
     $("#loginTabBtn").onclick=()=>setAuthMode("login");
@@ -2172,13 +2269,17 @@
     $("#deleteConfirmInput").addEventListener("input",e=>{
       $("#confirmDeleteAccountBtn").disabled=e.target.value.trim()!=="削除";
     });
-    $("#confirmDeleteAccountBtn").onclick=()=>{
+    $("#confirmDeleteAccountBtn").onclick=async()=>{
       if($("#deleteConfirmInput").value.trim()!=="削除") return;
       [
         STORAGE_KEY,GOAL_KEY,ANALYSIS_CACHE_KEY,ANALYSIS_COUNT_KEY,
         GENRES_KEY,PROFILE_KEY
       ].forEach(key=>localStorage.removeItem(key));
-      if(currentUser&&supabaseClient){supabaseClient.from(CLOUD_TABLE).delete().eq('user_id',currentUser.id);}
+      if(currentUser&&supabaseClient){
+        await supabaseClient.from('books').delete().eq('user_id',currentUser.id);
+        await supabaseClient.from('profiles').delete().eq('user_id',currentUser.id);
+        await supabaseClient.auth.signOut();
+      }
       alert(currentUser?"登録データを削除しました。認証アカウントの完全削除は正式版で対応します。":"この端末の登録データを削除しました。削除したデータは復元できません。");
       location.reload();
     };
