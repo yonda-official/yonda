@@ -1861,7 +1861,7 @@
       const eventParams={
         send_to:"G-FJZPY111P3",
         transport_type:"beacon",
-        app_version:"page-diagnostic-fix-v9",
+        app_version:"page-diagnostic-auth-fix-v10",
         ...params
       };
       try{
@@ -1881,7 +1881,7 @@
 
     // 公開中のHTMLが最新版かをGA4で確認する診断イベント。
     window.addEventListener("load",()=>{
-      trackYondaEvent("yonda_build_loaded", {build:"page-diagnostic-fix-v9"});
+      trackYondaEvent("yonda_build_loaded", {build:"page-diagnostic-auth-fix-v10"});
     },{once:true});
 
     let analyticsKnownBookIds=new Set(books.map(book=>String(book?.id||"")).filter(Boolean));
@@ -2328,7 +2328,8 @@
       $("#coverUrl").value=book?.coverUrl||"";
       $("#bookForm").dataset.searchMeta=JSON.stringify({isbn:book?.isbn||"",publisher:book?.publisher||"",source:book?.source||"",sourceUrl:book?.sourceUrl||""});
       $("#bookSearchResults").innerHTML="";
-      $("#pageDiagnostic").hidden=true;
+      const diagnosticBox=$("#pageDiagnostic");
+      if(diagnosticBox) diagnosticBox.hidden=true;
       pageDiagnosticState=null;
       $("#bookSearchInput").value="";
       renderGenreSettings();
@@ -3283,20 +3284,41 @@
       $("#settingsSignupBtn").hidden=logged;
     }
     async function initAuth(){
-      if(!CLOUD_ENABLED){updateAccountUI();return;}
-      const {data}=await supabaseClient.auth.getSession();
-      currentUser=data.session?.user||null;
-      updateAccountUI();
-      if(currentUser) await loadCloudData();
-      supabaseClient.auth.onAuthStateChange(async(event,session)=>{
-        currentUser=session?.user||null;
-        updateAccountUI();
-        if(event==="PASSWORD_RECOVERY"){
-          openPasswordResetModal(true);
+      try{
+        if(!CLOUD_ENABLED){
+          updateAccountUI();
           return;
         }
-        if(currentUser) await loadCloudData();
-      });
+
+        const {data,error}=await supabaseClient.auth.getSession();
+        if(error) console.warn("認証状態の取得に失敗しました:",error);
+
+        currentUser=data?.session?.user||null;
+        updateAccountUI();
+
+        if(currentUser){
+          closeAuthModal();
+          await loadCloudData();
+        }
+
+        supabaseClient.auth.onAuthStateChange(async(event,session)=>{
+          currentUser=session?.user||null;
+          updateAccountUI();
+
+          if(event==="PASSWORD_RECOVERY"){
+            openPasswordResetModal(true);
+            return;
+          }
+
+          if(currentUser){
+            closeAuthModal();
+            await loadCloudData();
+          }
+        });
+      }catch(error){
+        console.error("認証初期化に失敗しました:",error);
+        updateAccountUI();
+      }
     }
     $("#openAuthBtn").onclick=()=>{setAuthMode("signup");openAuthModal();};
     $("#openLoginBtn").onclick=()=>{setAuthMode("login");openAuthModal();};
@@ -3457,11 +3479,18 @@
     });
 
     function escapeHtml(v=""){return String(v).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
-    renderAll();
-    bindJapaneseFinishedDateInput();
-    syncJapaneseFinishedDateDisplay();
-    updatePageFieldNote();
+    // 認証状態の復元は画面描画とは独立して開始する。
+    // 本棚などの描画で問題が起きてもログイン表示を更新できるようにする。
     initAuth();
+
+    try{
+      renderAll();
+      bindJapaneseFinishedDateInput();
+      syncJapaneseFinishedDateDisplay();
+      updatePageFieldNote();
+    }catch(error){
+      console.error("初期画面の描画に失敗しました:",error);
+    }
   
 
     // お問い合わせは受信先メールアドレスをHTMLに露出させないため、
