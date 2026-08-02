@@ -352,15 +352,37 @@
       .shelf-empty-guide{font-size:.67rem}
     }
     .shelf-count{font-size:.7rem;color:var(--muted)}
-    .shelf-reorder-hint{display:block;margin-top:3px}
-    .bookshelf-full .spine-wrap{touch-action:pan-y;user-select:none;-webkit-user-select:none}
-    .bookshelf-full .spine-wrap.reorder-dragging{
-      opacity:.55;
-      transform:scale(1.04);
-      z-index:12;
+    .shelf-head-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .reorder-sheet{width:min(96vw,980px);background:#f8f4ec}
+    .reorder-help{margin:0 0 12px;color:var(--muted);font-size:.72rem;line-height:1.55}
+    .reorder-strip{
+      display:flex;align-items:stretch;gap:10px;overflow-x:auto;overflow-y:hidden;
+      padding:10px 10px 16px;border:1px solid var(--line);border-radius:18px;background:#fff;
+      scrollbar-gutter:stable;overscroll-behavior-x:contain;
     }
-    .bookshelf-full.reorder-active{cursor:grabbing}
-    .bookshelf-full.reorder-active .spine{pointer-events:none}
+    .reorder-card{
+      flex:0 0 168px;min-height:96px;display:grid;grid-template-columns:38px minmax(0,1fr);
+      align-items:stretch;border:1px solid var(--line);border-radius:15px;background:var(--panel);
+      box-shadow:0 5px 14px rgba(54,62,49,.07);overflow:hidden;
+    }
+    .reorder-card.dragging{opacity:.52;transform:scale(.98)}
+    .reorder-handle{
+      border:0;border-right:1px solid var(--line);border-radius:0;background:#f1ece2;color:#6e756a;
+      display:grid;place-items:center;font-size:1.12rem;line-height:1;cursor:grab;
+      touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+    }
+    .reorder-handle:active{cursor:grabbing;background:#e6eee1;color:var(--accent)}
+    .reorder-card-copy{min-width:0;padding:11px 10px;display:flex;flex-direction:column;justify-content:center;gap:5px}
+    .reorder-card-copy strong{font-size:.78rem;line-height:1.45;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+    .reorder-card-copy span{font-size:.66rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .reorder-empty{padding:34px 18px;color:var(--muted);text-align:center;width:100%}
+    @media(max-width:620px){
+      .shelf-head-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}
+      .shelf-head-actions button{width:100%;padding-left:8px;padding-right:8px}
+      .reorder-sheet{width:100%}
+      .reorder-card{flex-basis:148px;grid-template-columns:42px minmax(0,1fr)}
+      .reorder-strip{padding-left:8px;padding-right:8px}
+    }
     /* スマホ版の本棚指定を最終表示値に統合 */
     @media(max-width:620px){
       .bookshelf{
@@ -1354,11 +1376,27 @@
         <div>
           <h3>あなたの本棚</h3>
           <span class="tiny" id="allBooksCount"></span>
-          <span class="tiny shelf-reorder-hint" id="shelfReorderHint">本を長押しして移動できます</span>
         </div>
-        <button class="ghost" id="closeAllBooksModal">閉じる</button>
+        <div class="shelf-head-actions">
+          <button class="secondary" id="openReorderModal">本の並び替え</button>
+          <button class="ghost" id="closeAllBooksModal">閉じる</button>
+        </div>
       </div>
       <div class="bookshelf bookshelf-full" id="allBookList"></div>
+    </div>
+  </div>
+
+  <div class="modal" id="reorderModal" aria-hidden="true">
+    <div class="sheet reorder-sheet">
+      <div class="sheet-head">
+        <div>
+          <h3>本の並び替え</h3>
+          <span class="tiny" id="reorderBookCount"></span>
+        </div>
+        <button class="ghost" id="closeReorderModal">完了</button>
+      </div>
+      <p class="reorder-help">各本の左側にある三本線をつかみ、左右へ動かして順番を変更します。変更は自動で保存されます。</p>
+      <div class="reorder-strip" id="reorderBookList"></div>
     </div>
   </div>
 
@@ -2169,27 +2207,36 @@
     }
 
     function renderAllBookshelf(){
-      // shelfOrderの小さい順に左から表示する。
       const data=filteredBooks();
       $("#allBooksCount").textContent=`全${data.length}冊`;
       $("#allBookList").innerHTML=data.length
         ? renderShelfRows(data)
         : `<div class="shelf-row"><div class="shelf-empty">表示できる本がありません。</div></div>`;
-
-      const canReorder=currentFilter==="all"&&!$("#searchInput").value.trim();
-      $("#allBookList").dataset.reorderEnabled=canReorder?"1":"0";
-      $("#shelfReorderHint").textContent=canReorder
-        ? "本を長押しして移動できます（PCはドラッグでも操作できます）"
-        : "並べ替えは「すべて」かつ検索なしで利用できます";
-      bindShelfReorder();
     }
 
-    function persistShelfOrderFromDom(){
-      const ids=[...$("#allBookList").querySelectorAll(".spine-wrap[data-book-id]")]
+    function reorderCardHtml(book){
+      return `<div class="reorder-card" data-book-id="${escapeHtml(book.id)}">
+        <button class="reorder-handle" type="button" aria-label="${escapeHtml(book.title)}を移動" title="左右にドラッグして移動">☰</button>
+        <div class="reorder-card-copy">
+          <strong>${escapeHtml(book.title)}</strong>
+          <span>${escapeHtml(book.author||"著者未登録")}</span>
+        </div>
+      </div>`;
+    }
+
+    function renderReorderBooks(){
+      const data=shelfOrderedBooks();
+      $("#reorderBookCount").textContent=`全${data.length}冊`;
+      $("#reorderBookList").innerHTML=data.length
+        ? data.map(reorderCardHtml).join("")
+        : `<div class="reorder-empty">並べ替える本がありません。</div>`;
+    }
+
+    function persistShelfOrderFromReorderDom(){
+      const ids=[...$("#reorderBookList").querySelectorAll(".reorder-card[data-book-id]")]
         .map(node=>node.dataset.bookId)
         .filter(Boolean);
       if(ids.length!==books.length) return;
-
       const byId=new Map(books.map(book=>[String(book.id),book]));
       ids.forEach((id,index)=>{
         const book=byId.get(String(id));
@@ -2206,90 +2253,53 @@
       renderAllBookshelf();
     }
 
-    function bindShelfReorder(){
-      const container=$("#allBookList");
-      if(!container||container.dataset.reorderBound==="1") return;
-      container.dataset.reorderBound="1";
-
+    function bindReorderStrip(){
+      const strip=$("#reorderBookList");
+      if(!strip||strip.dataset.bound==="1") return;
+      strip.dataset.bound="1";
       let active=null;
-      let timer=null;
+      let pointerId=null;
       let moved=false;
-      let suppressClickUntil=0;
-      let startX=0;
-      let startY=0;
 
-      const clear=()=>{
-        if(timer) clearTimeout(timer);
-        timer=null;
-      };
-
-      container.addEventListener("pointerdown",event=>{
-        if(container.dataset.reorderEnabled!=="1"||event.button!==0) return;
-        const wrap=event.target.closest(".spine-wrap[data-book-id]");
-        if(!wrap) return;
+      strip.addEventListener("pointerdown",event=>{
+        const handle=event.target.closest(".reorder-handle");
+        if(!handle||event.button!==0) return;
+        const card=handle.closest(".reorder-card[data-book-id]");
+        if(!card) return;
+        event.preventDefault();
+        active=card;
+        pointerId=event.pointerId;
         moved=false;
-        startX=event.clientX;
-        startY=event.clientY;
-        clear();
-        timer=setTimeout(()=>{
-          active=wrap;
-          active.classList.add("reorder-dragging");
-          container.classList.add("reorder-active");
-          try{active.setPointerCapture(event.pointerId);}catch(_error){}
-          if(navigator.vibrate) navigator.vibrate(25);
-        },350);
+        active.classList.add("dragging");
+        try{handle.setPointerCapture(pointerId);}catch(_error){}
+        if(navigator.vibrate) navigator.vibrate(18);
       });
 
-      container.addEventListener("pointermove",event=>{
-        if(!active){
-          if(timer&&Math.hypot(event.clientX-startX,event.clientY-startY)>10) clear();
-          return;
-        }
-        moved=true;
+      strip.addEventListener("pointermove",event=>{
+        if(!active||event.pointerId!==pointerId) return;
         event.preventDefault();
-        const target=document.elementFromPoint(event.clientX,event.clientY)
-          ?.closest(".spine-wrap[data-book-id]");
-        if(!target||target===active||!container.contains(target)) return;
-
-        const targetRect=target.getBoundingClientRect();
-        const sameRow=active.parentElement===target.parentElement;
-        const before=sameRow
-          ? event.clientX<targetRect.left+targetRect.width/2
-          : event.clientY<targetRect.top+targetRect.height/2;
-        target.parentElement.insertBefore(active,before?target:target.nextSibling);
-
-        // 長い本棚ではドラッグ位置に応じてモーダル内を緩やかにスクロールする。
-        const scroller=container.closest(".bookshelf-full");
-        if(scroller){
-          const rect=scroller.getBoundingClientRect();
-          if(event.clientY<rect.top+48) scroller.scrollTop-=14;
-          else if(event.clientY>rect.bottom-48) scroller.scrollTop+=14;
+        moved=true;
+        const target=document.elementFromPoint(event.clientX,event.clientY)?.closest(".reorder-card[data-book-id]");
+        if(target&&target!==active&&strip.contains(target)){
+          const rect=target.getBoundingClientRect();
+          const before=event.clientX<rect.left+rect.width/2;
+          strip.insertBefore(active,before?target:target.nextSibling);
         }
+        const rect=strip.getBoundingClientRect();
+        if(event.clientX<rect.left+56) strip.scrollLeft-=16;
+        else if(event.clientX>rect.right-56) strip.scrollLeft+=16;
       },{passive:false});
 
-      const finish=()=>{
-        clear();
-        if(!active) return;
-        active.classList.remove("reorder-dragging");
-        container.classList.remove("reorder-active");
+      const finish=event=>{
+        if(!active||(event&&event.pointerId!==pointerId)) return;
+        active.classList.remove("dragging");
         active=null;
-        if(moved){
-          suppressClickUntil=Date.now()+600;
-          persistShelfOrderFromDom();
-        }
+        pointerId=null;
+        if(moved) persistShelfOrderFromReorderDom();
+        moved=false;
       };
-
-      container.addEventListener("pointerup",finish);
-      container.addEventListener("pointercancel",finish);
-      container.addEventListener("pointerleave",event=>{
-        if(active&&event.buttons===0) finish();
-      });
-      container.addEventListener("click",event=>{
-        if(Date.now()<suppressClickUntil){
-          event.preventDefault();
-          event.stopPropagation();
-        }
-      },true);
+      strip.addEventListener("pointerup",finish);
+      strip.addEventListener("pointercancel",finish);
     }
 
     function renderStats(){
@@ -2764,10 +2774,26 @@
       $("#allBooksModal").classList.remove("open");
       $("#allBooksModal").setAttribute("aria-hidden","true");
     }
+    function openReorderModal(){
+      renderReorderBooks();
+      bindReorderStrip();
+      $("#reorderModal").classList.add("open");
+      $("#reorderModal").setAttribute("aria-hidden","false");
+    }
+    function closeReorderModal(){
+      $("#reorderModal").classList.remove("open");
+      $("#reorderModal").setAttribute("aria-hidden","true");
+      renderAllBookshelf();
+    }
     $("#showAllBooksBtn").onclick=openAllBooksModal;
     $("#closeAllBooksModal").onclick=closeAllBooksModal;
+    $("#openReorderModal").onclick=openReorderModal;
+    $("#closeReorderModal").onclick=closeReorderModal;
     $("#allBooksModal").addEventListener("click",e=>{
       if(e.target.id==="allBooksModal") closeAllBooksModal();
+    });
+    $("#reorderModal").addEventListener("click",e=>{
+      if(e.target.id==="reorderModal") closeReorderModal();
     });
 
     $("#headerAddBtn").addEventListener("click",()=>openModal());
