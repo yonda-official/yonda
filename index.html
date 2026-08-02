@@ -347,21 +347,20 @@
       .shelf-empty-guide{font-size:.67rem}
     }
     .shelf-count{font-size:.7rem;color:var(--muted)}
+    /* スマホ版の本棚指定を最終表示値に統合 */
     @media(max-width:620px){
-      .bookshelf{padding:8px 2px 3px}
-      .shelf-row{gap:3px;padding-left:10px;padding-right:10px}
-    }
-    @media(max-width:620px){
-      .bookshelf{padding:14px 10px 4px;border-width:11px}
-      .shelf-row{gap:3px;padding-left:6px;padding-right:6px}
-    }
-    @media(max-width:620px){
-      .bookshelf{padding:14px 10px 4px;border-width:10px}
-      .shelf-row{gap:3px;padding-left:6px;padding-right:6px}
-    }
-    @media(max-width:620px){
-      .bookshelf{padding:14px 10px 2px;background-size:auto 100%,auto 100%}
-      .shelf-row{gap:3px;padding-left:8px;padding-right:8px;overflow-x:auto;scrollbar-width:none}
+      .bookshelf{
+        padding:14px 10px 2px;
+        border-width:10px;
+        background-size:auto 100%,auto 100%;
+      }
+      .shelf-row{
+        gap:3px;
+        padding-left:8px;
+        padding-right:8px;
+        overflow-x:auto;
+        scrollbar-width:none;
+      }
       .shelf-row::-webkit-scrollbar{display:none}
     }
     .pro-preview{position:relative;overflow:hidden}
@@ -2273,7 +2272,6 @@
     }
 
 
-
     function isoToJapaneseDate(value){
       const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value||""));
       return match ? `${match[1]}/${match[2]}/${match[3]}` : "";
@@ -3268,5 +3266,34 @@
     }, true);
 
 </script>
+
+<script>
+(function(){
+  if(typeof gtag !== 'function') return;
+
+  window.trackYondaEvent = function(name, params){
+    try{ gtag('event', name, params || {}); }catch(e){}
+  };
+
+  document.addEventListener('submit', function(e){
+    const id = e.target && e.target.id ? e.target.id : '';
+    if(id === 'contactForm') trackYondaEvent('contact_submit');
+    if(id === 'bookForm') trackYondaEvent('book_added');
+  }, true);
+
+  document.addEventListener('click', function(e){
+    const t = e.target.closest('button');
+    if(!t) return;
+    const txt = (t.textContent || '').trim();
+
+    if(txt.includes('ログイン')) trackYondaEvent('login');
+    if(txt.includes('新規登録')) trackYondaEvent('signup');
+    if(txt.includes('追加')) trackYondaEvent('book_add_click');
+    if(txt.includes('エクスポート') || txt.includes('CSV')) trackYondaEvent('export_csv');
+    if(txt.includes('JSON')) trackYondaEvent('export_json');
+  }, true);
+})();
+</script>
+
 </body>
 </html>
