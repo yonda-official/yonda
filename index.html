@@ -126,10 +126,6 @@
       grid-column:1/-1;text-align:center;padding:34px 12px;color:var(--muted);
       border:1px dashed var(--line);border-radius:18px;
     }
-    .progress-wrap{display:grid;gap:10px}
-    .progress-line{display:flex;justify-content:space-between;font-size:.8rem}
-    .bar{height:12px;border-radius:999px;background:#e7e2d7;overflow:hidden}
-    .bar > div{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));width:0}
     .chart{height:170px;display:flex;align-items:flex-end;gap:8px;padding-top:10px}
     .month{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
     .month i{display:block;width:100%;max-width:34px;background:var(--accent-2);border-radius:8px 8px 3px 3px;min-height:4px}
@@ -695,7 +691,6 @@
         padding:15px;
       }
       #homeSection .side-stack > .panel .panel-head{margin-bottom:10px}
-      #homeSection .side-stack .progress-wrap{gap:8px}
       #homeSection .side-stack .prompt-box{min-height:76px;padding:11px}
       #homeSection .side-stack .quick-stats{gap:8px}
       #homeSection .side-stack .stat{padding:10px}
@@ -1056,6 +1051,101 @@
       font-weight:400;
     }
 
+
+    /* 本の登録・編集：ラベル、入力欄、表紙の基準線を統一 */
+    #bookForm.form-grid{gap:12px}
+    #bookForm label{margin:0!important;gap:6px}
+    #bookForm .field,
+    #bookForm select{
+      height:46px!important;
+      min-height:46px!important;
+      padding-top:0!important;
+      padding-bottom:0!important;
+    }
+    .book-identity-grid{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 136px;
+      gap:16px;
+      align-items:start;
+    }
+    .book-identity-fields{
+      display:grid;
+      gap:10px;
+      min-width:0;
+    }
+    .book-identity-fields label,
+    .compact-pair > label,
+    #bookForm .two > label,
+    #bookForm .page-field-wrap,
+    #bookForm .finished-date-wrap{
+      display:grid;
+      grid-template-rows:auto 46px;
+      align-content:start;
+      min-width:0;
+      margin:0!important;
+    }
+    .book-cover-preview{
+      position:relative;
+      width:136px;
+      height:204px;
+      margin-top:23px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:linear-gradient(145deg,#f4efe5,#ebe4d7);
+      overflow:hidden;
+      display:grid;
+      place-items:center;
+      box-shadow:inset 0 1px rgba(255,255,255,.7);
+    }
+    .book-cover-preview img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:none;
+    }
+    .book-cover-preview.has-cover img{display:block}
+    .book-cover-placeholder{
+      display:grid;
+      place-items:center;
+      gap:5px;
+      text-align:center;
+      color:var(--muted);
+      font-size:.66rem;
+      line-height:1.35;
+      padding:10px;
+    }
+    .book-cover-preview.has-cover .book-cover-placeholder{display:none}
+    .book-cover-placeholder b{font-size:1.45rem;font-weight:400}
+    .compact-pair{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+      gap:12px;
+      align-items:start;
+    }
+    .compact-pair > label .field,
+    .compact-pair > label select{
+      width:100%;
+    }
+    #bookForm .two{gap:12px;align-items:start}
+    #bookForm .page-date-grid{align-items:start}
+    #bookForm .finished-date-control{height:46px}
+    #bookForm .finished-date-picker{min-height:46px!important}
+    @media(max-width:620px){
+      .book-identity-grid{
+        grid-template-columns:minmax(0,1fr) 108px;
+        gap:10px;
+      }
+      .book-cover-preview{
+        width:108px;
+        height:162px;
+        margin-top:23px;
+      }
+      .book-identity-fields{gap:10px}
+      .book-cover-placeholder{font-size:.59rem;padding:6px}
+      .book-cover-placeholder b{font-size:1.15rem}
+      .compact-pair,#bookForm .two{gap:10px}
+    }
+
     .contact-form{display:grid;gap:12px;margin-top:12px}
     .contact-form .required-mark{color:var(--danger);font-size:.68rem;font-weight:700}
     .contact-form textarea{min-height:140px}
@@ -1244,15 +1334,6 @@
           </button>
 
           <div class="panel">
-            <div class="panel-head"><h3>今月の目標</h3><span class="tiny" id="goalText">0 / 4冊</span></div>
-            <div class="progress-wrap">
-              <div class="bar"><div id="goalBar"></div></div>
-              <div class="progress-line"><span>読了ペース</span><strong id="paceText">あと4冊</strong></div>
-              <button class="secondary" id="changeGoalBtn">目標を変更</button>
-            </div>
-          </div>
-
-          <div class="panel">
             <div class="panel-head"><h3>読書サマリー</h3><span class="tiny">現在の記録</span></div>
             <div class="quick-stats">
               <div class="stat"><strong id="totalCount">0</strong><span>登録冊数</span></div>
@@ -1291,6 +1372,7 @@
                 <option value="genres">ジャンル構成</option>
                 <option value="status">読書ステータス</option>
                 <option value="ratings">評価の分布</option>
+                <option value="discovery">本との出会い方</option>
               </select>
             </div>
           </div>
@@ -1769,7 +1851,7 @@
         <button class="ghost" id="closeDeleteAccountModal">閉じる</button>
       </div>
       <div class="delete-warning">
-        アカウントを削除すると、読書履歴、評価、感想、引用、目標設定、
+        アカウントを削除すると、読書履歴、評価、感想、引用、
         AI分析結果その他の登録情報がすべて削除されます。
         <strong>削除後は復元できません。</strong>
       </div>
@@ -1806,16 +1888,22 @@
         </div>
         <input type="hidden" id="bookId" />
         <input type="hidden" id="coverUrl" />
-        <label>タイトル
-          <input class="field" id="title" required placeholder="例：嫌われる勇気" />
-        </label>
-        <div class="two">
-          <label>著者
-            <input class="field" id="author" placeholder="例：岸見一郎" />
-          </label>
-          <label>出版社
-            <input class="field" id="publisher" placeholder="例：ダイヤモンド社" />
-          </label>
+        <div class="book-identity-grid">
+          <div class="book-identity-fields">
+            <label>タイトル
+              <input class="field" id="title" required placeholder="例：嫌われる勇気" />
+            </label>
+            <label>著者
+              <input class="field" id="author" placeholder="例：岸見一郎" />
+            </label>
+            <label>出版社
+              <input class="field" id="publisher" placeholder="例：ダイヤモンド社" />
+            </label>
+          </div>
+          <div class="book-cover-preview" id="bookCoverPreview" aria-label="表紙プレビュー">
+            <img id="bookCoverPreviewImage" alt="選択した本の表紙" />
+            <div class="book-cover-placeholder"><b>📖</b><span>表紙画像</span></div>
+          </div>
         </div>
         <div class="two page-date-grid">
           <label>状態
@@ -1848,10 +1936,25 @@
             <input id="finishedAt" type="hidden" />
           </label>
         </div>
-        <label>ジャンル・タグ
-          <input class="field" id="tags" placeholder="小説, 仕事, 心理学" />
-          <div class="genre-suggestions" id="genreSuggestions"></div>
-        </label>
+        <div class="compact-pair">
+          <label>ジャンル・タグ
+            <input class="field" id="tags" placeholder="小説, 仕事, 心理学" />
+          </label>
+          <label>本との出会い方
+            <select id="discoverySource">
+              <option value="">未設定</option>
+              <option value="bookstore">書店</option>
+              <option value="recommendation">人からの紹介</option>
+              <option value="newspaper_magazine">新聞・雑誌</option>
+              <option value="sns">SNS</option>
+              <option value="work">仕事</option>
+              <option value="library">図書館</option>
+              <option value="online_store">オンライン書店</option>
+              <option value="other">その他</option>
+            </select>
+          </label>
+        </div>
+        <div class="genre-suggestions" id="genreSuggestions"></div>
         <label>一言メモ
           <textarea id="memo" placeholder="読み終えた直後の感想を一言だけ"></textarea>
         </label>
@@ -1891,11 +1994,9 @@
 
     let genres = JSON.parse(localStorage.getItem(GENRES_KEY) || "null") ||
       ["小説","ビジネス","経営","心理学","歴史","科学","エッセイ","自己啓発"];
-    const GOAL_KEY = "yonda_lite_goal_v1";
     let books = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null") || [];
     let currentFilter = "all";
     let currentEditId = null;
-    let monthlyGoal = Number(localStorage.getItem(GOAL_KEY) || 4);
 
     const $ = s => document.querySelector(s);
     const $$ = s => [...document.querySelectorAll(s)];
@@ -1909,7 +2010,7 @@
       const eventParams={
         send_to:"G-FJZPY111P3",
         transport_type:"beacon",
-        app_version:"shelf-order-page-fix-v7",
+        app_version:APP_VERSION,
         ...params
       };
       try{
@@ -1927,9 +2028,51 @@
       }
     }
 
+    const ERROR_LOG_KEY = "yonda_error_log_v1";
+    const APP_VERSION = "page-search-max-free-error-log-v17";
+
+    function compactErrorMessage(error){
+      const message=error instanceof Error ? error.message : String(error||"Unknown error");
+      return message.replace(/[\r\n\t]+/g," ").slice(0,180);
+    }
+
+    function logYondaError(context,error,details={}){
+      const entry={
+        occurredAt:new Date().toISOString(),
+        context:String(context||"unknown").slice(0,60),
+        name:error?.name ? String(error.name).slice(0,40) : "Error",
+        message:compactErrorMessage(error),
+        online:navigator.onLine,
+        appVersion:APP_VERSION
+      };
+      try{
+        const previous=JSON.parse(localStorage.getItem(ERROR_LOG_KEY)||"[]");
+        const logs=Array.isArray(previous)?previous:[];
+        logs.push(entry);
+        localStorage.setItem(ERROR_LOG_KEY,JSON.stringify(logs.slice(-50)));
+      }catch(storageError){
+        console.warn("Yonda error log storage failed",storageError);
+      }
+      trackYondaEvent("app_error",{
+        error_context:entry.context,
+        error_name:entry.name,
+        error_message:entry.message,
+        online:entry.online ? 1 : 0,
+        ...details
+      });
+      return entry;
+    }
+
+    window.addEventListener("error",event=>{
+      logYondaError("window_error",event.error||event.message);
+    });
+    window.addEventListener("unhandledrejection",event=>{
+      logYondaError("unhandled_promise",event.reason);
+    });
+
     // 公開中のHTMLが最新版かをGA4で確認する診断イベント。
     window.addEventListener("load",()=>{
-      trackYondaEvent("yonda_build_loaded", {build:"shelf-order-page-fix-v7"});
+      trackYondaEvent("yonda_build_loaded", {build:APP_VERSION});
     },{once:true});
 
     let analyticsKnownBookIds=new Set(books.map(book=>String(book?.id||"")).filter(Boolean));
@@ -1991,6 +2134,7 @@
       return JSON.stringify({
         memo:book.memo||"",
         quote:book.quote||"",
+        discoverySource:book.discoverySource||"",
         shelfOrder:Number.isFinite(Number(book.shelfOrder))?Number(book.shelfOrder):null
       });
     }
@@ -2001,11 +2145,12 @@
           return {
             memo:parsed.memo||"",
             quote:parsed.quote||"",
+            discoverySource:parsed.discoverySource||"",
             shelfOrder:Number.isFinite(Number(parsed.shelfOrder))?Number(parsed.shelfOrder):null
           };
         }
       }catch(_e){}
-      return {memo:value||"",quote:"",shelfOrder:null};
+      return {memo:value||"",quote:"",discoverySource:"",shelfOrder:null};
     }
     function toCloudBook(book){
       return {
@@ -2044,6 +2189,7 @@
         tags:Array.isArray(row.tags)?row.tags:[],
         memo:note.memo,
         quote:note.quote,
+        discoverySource:note.discoverySource||"",
         shelfOrder:note.shelfOrder,
         coverUrl:row.cover_url||"",
         source:row.source||"",
@@ -2052,11 +2198,9 @@
     }
     function applyCloudState(profileRow,bookRows){
       if(profileRow){
-        monthlyGoal=Number(profileRow.monthly_goal)||0;
         genres=Array.isArray(profileRow.custom_genres)?profileRow.custom_genres:genres;
         const storedProfile=profileRow.settings?.profile||{};
         localStorage.setItem(PROFILE_KEY,JSON.stringify(storedProfile));
-        localStorage.setItem(GOAL_KEY,String(monthlyGoal));
         localStorage.setItem(GENRES_KEY,JSON.stringify(genres));
       }
       books=(bookRows||[]).map(fromCloudBook);
@@ -2075,25 +2219,25 @@
       const profilePayload={
         user_id:currentUser.id,
         display_name:profile.name||null,
-        monthly_goal:Number(monthlyGoal)||0,
+        monthly_goal:0,
         latest_note:'',
         custom_genres:genres,
         settings:{profile,savedAt:new Date().toISOString()},
         updated_at:new Date().toISOString()
       };
       const {error:profileError}=await supabaseClient.from('profiles').upsert(profilePayload,{onConflict:'user_id'});
-      if(profileError){console.error('Yonda profile sync error',profileError);return;}
+      if(profileError){console.error('Yonda profile sync error',profileError);logYondaError('cloud_profile_sync',profileError);return;}
 
       const cloudBooks=books.map(toCloudBook);
       if(cloudBooks.length){
         const {error:upsertError}=await supabaseClient.from('books').upsert(cloudBooks,{onConflict:'id'});
-        if(upsertError){console.error('Yonda books sync error',upsertError);return;}
+        if(upsertError){console.error('Yonda books sync error',upsertError);logYondaError('cloud_books_sync',upsertError);return;}
       }
       const ids=books.map(book=>book.id);
       let deleteQuery=supabaseClient.from('books').delete().eq('user_id',currentUser.id);
       if(ids.length) deleteQuery=deleteQuery.not('id','in',`(${ids.join(',')})`);
       const {error:deleteError}=await deleteQuery;
-      if(deleteError) console.error('Yonda cloud cleanup error',deleteError);
+      if(deleteError){console.error('Yonda cloud cleanup error',deleteError);logYondaError('cloud_cleanup',deleteError);}
     }
     async function fetchCloudState(){
       const [{data:profileRow,error:profileError},{data:bookRows,error:booksError}]=await Promise.all([
@@ -2129,6 +2273,7 @@
         }
       }catch(error){
         console.error('Yonda cloud load error',error);
+        logYondaError('cloud_load',error);
         alert('クラウドデータの読み込みに失敗しました。通信状態を確認して再読み込みしてください。');
       }finally{
         cloudLoading=false;
@@ -2334,16 +2479,6 @@
       $("#readCount").textContent = done.length;
       $("#pageCount").textContent = done.reduce((s,b)=>s+(Number(b.pages)||0),0).toLocaleString();
 
-      const now = new Date();
-      const monthDone = done.filter(b=>{
-        if(!b.finishedAt) return false;
-        const d=new Date(b.finishedAt+"T00:00:00");
-        return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
-      }).length;
-      $("#goalText").textContent = `${monthDone} / ${monthlyGoal}冊`;
-      $("#goalBar").style.width = `${Math.min(100, monthlyGoal ? monthDone/monthlyGoal*100 : 100)}%`;
-      $("#paceText").textContent = monthDone >= monthlyGoal ? "目標達成！" : `あと${monthlyGoal-monthDone}冊`;
-
       const memoBook = done.filter(b=>b.memo).sort((a,b)=>(b.finishedAt||"").localeCompare(a.finishedAt||""))[0];
       $("#recentMemo").textContent = memoBook ? `『${memoBook.title}』\n${memoBook.memo}` : "まだ読了メモがありません。";
     }
@@ -2450,6 +2585,30 @@
           count:books.filter(b=>Number(b.rating)===n).length
         }));
         target.innerHTML=renderBarChart(rows,"count","冊");
+      }
+
+      if(type==="discovery"){
+        const labels={
+          bookstore:"書店",
+          recommendation:"人からの紹介",
+          newspaper_magazine:"新聞・雑誌",
+          sns:"SNS",
+          work:"仕事",
+          library:"図書館",
+          online_store:"オンライン書店",
+          other:"その他",
+          "":"未設定"
+        };
+        const counts={};
+        books.forEach(book=>{
+          const key=book.discoverySource||"";
+          const label=labels[key]||"その他";
+          counts[label]=(counts[label]||0)+1;
+        });
+        const items=Object.entries(counts)
+          .sort((a,b)=>b[1]-a[1])
+          .map(([label,value])=>({label,value}));
+        target.innerHTML=renderDonut(items);
       }
 
       const done=books.filter(b=>b.status==="done");
@@ -2648,6 +2807,23 @@
       note.hidden=hasPages;
     }
 
+    function updateBookCoverPreview(url=""){
+      const frame=$("#bookCoverPreview");
+      const image=$("#bookCoverPreviewImage");
+      if(!frame||!image) return;
+      const safeUrl=String(url||"").trim().replace(/^http:/,"https:");
+      frame.classList.toggle("has-cover",Boolean(safeUrl));
+      if(safeUrl){
+        image.src=safeUrl;
+        image.onerror=()=>{
+          frame.classList.remove("has-cover");
+          image.removeAttribute("src");
+        };
+      }else{
+        image.removeAttribute("src");
+      }
+    }
+
     function renderAll(){ renderBooks();renderStats();renderDashboard();renderAnalysis();renderPlan(); }
 
     function openModal(book=null){
@@ -2665,9 +2841,11 @@
       $("#finishedAtPicker").value=book?.finishedAt||"";
       setTimeout(()=>{bindJapaneseFinishedDateInput();syncJapaneseFinishedDateDisplay();updatePageFieldNote();},0);
       $("#tags").value=(book?.tags||[]).join(", ");
+      $("#discoverySource").value=book?.discoverySource||"";
       $("#memo").value=book?.memo||"";
       $("#quote").value=book?.quote||"";
       $("#coverUrl").value=book?.coverUrl||"";
+      updateBookCoverPreview(book?.coverUrl||"");
       $("#bookForm").dataset.searchMeta=JSON.stringify({isbn:book?.isbn||"",publisher:book?.publisher||"",source:book?.source||"",sourceUrl:book?.sourceUrl||""});
       $("#bookSearchResults").innerHTML="";
       $("#bookSearchInput").value="";
@@ -2693,6 +2871,7 @@
         pages:Number($("#pages").value)||0,
         finishedAt:$("#finishedAt").value,
         tags:$("#tags").value.split(",").map(x=>x.trim()).filter(Boolean),
+        discoverySource:$("#discoverySource").value,
         memo:$("#memo").value.trim(),
         quote:$("#quote").value.trim(),
         coverUrl:$("#coverUrl").value.trim(),
@@ -2886,8 +3065,7 @@
       downloadBlob(JSON.stringify({
         exportedAt:new Date().toISOString(),
         books,
-        genres,
-        monthlyGoal
+        genres
       },null,2),"application/json",`yonda-${new Date().toISOString().slice(0,10)}.json`);
       trackYondaEvent("export_json", {book_count:books.length});
     };
@@ -2904,10 +3082,6 @@
           genres=data.genres;
           localStorage.setItem(GENRES_KEY,JSON.stringify(genres));
         }
-        if(Number.isFinite(Number(data.monthlyGoal))){
-          monthlyGoal=Number(data.monthlyGoal);
-          localStorage.setItem(GOAL_KEY,String(monthlyGoal));
-        }
         localStorage.setItem(STORAGE_KEY,JSON.stringify(books));
         renderAll();
         renderGenreSettings();
@@ -2916,6 +3090,7 @@
         alert("JSONファイルからデータを復元しました。");
       }catch(error){
         console.error(error);
+        logYondaError("json_import",error);
         alert("復元できませんでした。Yonda?で出力したJSONファイルを選択してください。");
       }finally{
         event.target.value="";
@@ -2940,11 +3115,6 @@
       btn.classList.add("active");
       window.scrollTo({top:0,behavior:"smooth"});
     }));
-    $("#changeGoalBtn").onclick=()=>{
-      const n=Number(prompt("今月の読了目標冊数を入力してください",monthlyGoal));
-      if(Number.isFinite(n)&&n>=0&&n<=100){monthlyGoal=n;localStorage.setItem(GOAL_KEY,n);renderStats();scheduleCloudSync();}
-    };
-
     function normalizeBookText(value){
       return String(value||"")
         .normalize("NFKC")
@@ -3094,6 +3264,7 @@
         }).join('');
       }catch(error){
         console.error(error);
+        logYondaError("book_search",error);
         box.innerHTML='<div class="note">楽天ブックス検索に接続できませんでした。少し時間を置いて再検索するか、下の欄へ手入力してください。</div>';
       }
     }
@@ -3349,7 +3520,7 @@
     window.selectSearchResult=async(payload)=>{
       const d=JSON.parse(decodeURIComponent(payload));
       $("#title").value=d.title||""; $("#author").value=d.author||""; $("#publisher").value=d.publisher||"";
-      $("#pages").value=d.pages||""; updatePageFieldNote(); $("#tags").value=(d.tags||[]).join(", "); $("#coverUrl").value=d.coverUrl||"";
+      $("#pages").value=d.pages||""; updatePageFieldNote(); $("#tags").value=(d.tags||[]).join(", "); $("#coverUrl").value=d.coverUrl||""; updateBookCoverPreview(d.coverUrl||"");
       $("#bookForm").dataset.searchMeta=JSON.stringify({isbn:d.isbn||"",publisher:d.publisher||"",salesDate:d.salesDate||"",source:d.source||"",sourceUrl:d.sourceUrl||""});
       const resultBox=$("#bookSearchResults");
       if(Number(d.pages)>0){
@@ -3369,6 +3540,7 @@
     $("#bookSearchBtn").onclick=searchBooks;
     $("#bookSearchInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchBooks();}});
     $("#pages")?.addEventListener("input",updatePageFieldNote);
+    $("#coverUrl")?.addEventListener("change",event=>updateBookCoverPreview(event.target.value));
     $("#chartTypeSelect").addEventListener("change",renderDashboard);
     $("#dashboardYearSelect").addEventListener("change",renderDashboard);
 
@@ -3595,8 +3767,8 @@
     $("#confirmDeleteAccountBtn").onclick=async()=>{
       if($("#deleteConfirmInput").value.trim()!=="削除") return;
       [
-        STORAGE_KEY,GOAL_KEY,ANALYSIS_CACHE_KEY,ANALYSIS_COUNT_KEY,
-        GENRES_KEY,PROFILE_KEY
+        STORAGE_KEY,"yonda_lite_goal_v1",ANALYSIS_CACHE_KEY,ANALYSIS_COUNT_KEY,
+        GENRES_KEY,PROFILE_KEY,ERROR_LOG_KEY
       ].forEach(key=>localStorage.removeItem(key));
       if(currentUser&&supabaseClient){
         await supabaseClient.from('books').delete().eq('user_id',currentUser.id);
