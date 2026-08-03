@@ -1065,6 +1065,20 @@
     .contact-status.error{color:var(--danger);font-weight:700}
     .contact-honeypot{position:absolute!important;left:-9999px!important;width:1px!important;height:1px!important;overflow:hidden!important}
 
+    /* ページ数取得の一時診断パネル。既存機能から独立し、検索結果選択時のみ表示する。 */
+    .page-diagnostic{display:none;margin-top:12px;border:1px solid rgba(111,143,104,.28);background:#fff;border-radius:15px;padding:12px}
+    .page-diagnostic.visible{display:block}
+    .page-diagnostic-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+    .page-diagnostic-head strong{font-size:.78rem}
+    .page-diagnostic-grid{display:grid;grid-template-columns:minmax(92px,.42fr) minmax(0,1fr);gap:6px 10px;font-size:.68rem;line-height:1.5}
+    .page-diagnostic-grid dt{margin:0;color:var(--muted)}
+    .page-diagnostic-grid dd{margin:0;min-width:0;overflow-wrap:anywhere;color:var(--text)}
+    .page-diagnostic-result{margin-top:10px;padding:9px 10px;border-radius:11px;background:#eef3e9;font-size:.7rem;line-height:1.55}
+    .page-diagnostic-result strong{color:var(--accent)}
+    @media(max-width:620px){
+      .page-diagnostic-grid{grid-template-columns:82px minmax(0,1fr);gap:6px 8px;font-size:.65rem}
+    }
+
     /* スマホ表示専用：PC表示には影響させない */
     @media(max-width:620px){
       .app{padding:14px 12px 102px}
@@ -1803,6 +1817,14 @@
           </label>
           <div class="note" style="margin-top:8px">候補を選ぶと、タイトル・著者・ページ数・タグ・表紙情報を自動入力します。</div>
           <div class="book-search-results" id="bookSearchResults"></div>
+          <section class="page-diagnostic" id="pageDiagnostic" aria-live="polite">
+            <div class="page-diagnostic-head">
+              <strong>ページ数取得の診断</strong>
+              <span class="tiny">原因調査用</span>
+            </div>
+            <dl class="page-diagnostic-grid" id="pageDiagnosticGrid"></dl>
+            <div class="page-diagnostic-result" id="pageDiagnosticResult"></div>
+          </section>
         </div>
         <input type="hidden" id="bookId" />
         <input type="hidden" id="coverUrl" />
@@ -1909,7 +1931,7 @@
       const eventParams={
         send_to:"G-FJZPY111P3",
         transport_type:"beacon",
-        app_version:"shelf-order-page-fix-v7",
+        app_version:"page-diagnostic-v14",
         ...params
       };
       try{
@@ -1929,7 +1951,7 @@
 
     // 公開中のHTMLが最新版かをGA4で確認する診断イベント。
     window.addEventListener("load",()=>{
-      trackYondaEvent("yonda_build_loaded", {build:"shelf-order-page-fix-v7"});
+      trackYondaEvent("yonda_build_loaded", {build:"page-diagnostic-v14"});
     },{once:true});
 
     let analyticsKnownBookIds=new Set(books.map(book=>String(book?.id||"")).filter(Boolean));
@@ -3084,7 +3106,7 @@
           const payload=encodeURIComponent(JSON.stringify({
             title:item.title||'',author:item.author||'',pages:Number(item.pages)||0,
             tags:Array.isArray(item.tags)?item.tags:[],coverUrl:cover,
-            isbn:item.isbn||'',publisher:item.publisher||'',source:item.source||'rakuten-books',sourceUrl:item.itemUrl||''
+            isbn:item.isbn||'',publisher:item.publisher||'',salesDate:item.salesDate||'',source:item.source||'rakuten-books',sourceUrl:item.itemUrl||''
           }));
           return `<div class="search-result">
             ${cover?`<img src="${escapeHtml(cover)}" alt="">`:`<div style="width:52px;height:68px;background:var(--panel-2);border-radius:8px;display:grid;place-items:center">📖</div>`}
@@ -3107,18 +3129,34 @@
       const text=String(value||"").normalize("NFKC").replace(/\s+/g," ").trim();
       if(!text) return 0;
 
-      // 「xii, 360 p.」「12, 356ページ」のような前付け＋本文ページは、
-      // ページ単位の直前にある最後のアラビア数字を採用する。
-      const unitMatches=[...text.matchAll(/(\d{1,4})\s*(?:ページ|頁|p(?:ages?)?\.?)(?=$|[\s,;:.)\]】])/gi)];
-      for(let index=unitMatches.length-1;index>=0;index--){
-        const pages=Number(unitMatches[index][1]);
-        if(pages>0&&pages<5000) return pages;
+      const candidates=[];
+      const add=(raw,weight=0)=>{
+        const pages=Number(raw);
+        if(Number.isFinite(pages)&&pages>0&&pages<5000) candidates.push({pages,weight});
+      };
+
+      // 明示的なページ単位を最優先。「xii, 360 p.」「12, 356頁」「1冊 (360ページ)」に対応。
+      for(const match of text.matchAll(/(\d{1,4})\s*(?:ページ|頁|p(?:ages?)?\.?)(?=$|[\s,;:.)\]】／/])/gi)){
+        add(match[1],100);
       }
 
-      // NDL等で見られる「冊 ; 20cm」の前にページ数だけが置かれる表記を補完。
-      const extentMatch=text.match(/(?:^|[\s,;:])(?:[ivxlcdm]+\s*,\s*)?(\d{2,4})\s*(?=p?\s*[;／/]?\s*\d{1,3}\s*cm(?:$|[\s,;]))/i);
-      const extentPages=extentMatch?Number(extentMatch[1]):0;
-      return extentPages>0&&extentPages<5000?extentPages:0;
+      // 「360p ; 20cm」「xii, 360 ; 19 cm」など、寸法表記の直前にある本文ページ。
+      for(const match of text.matchAll(/(?:^|[\s,;:(])(?:[ivxlcdm]+\s*[,＋+]\s*)?(\d{2,4})\s*(?:p\.?)?\s*(?=[;／/]?\s*\d{1,3}(?:\.\d+)?\s*cm(?:$|[\s,;.)]))/gi)){
+        add(match[1],90);
+      }
+
+      // 「前付12頁, 本文356頁」のように複数値がある場合は、本文・本編・総ページに近い値を優先。
+      for(const match of text.matchAll(/(?:本文|本編|総頁|総ページ|ページ数)[^0-9]{0,8}(\d{1,4})/gi)){
+        add(match[1],110);
+      }
+
+      // 書誌で一般的な「xii, 360」「12, 356」の末尾側。単独の数字だけは誤採用防止のため対象外。
+      const compound=text.match(/(?:^|[\s(])(?:[ivxlcdm]+|\d{1,3})\s*[,＋+]\s*(\d{2,4})(?=$|[\s,;.)])/i);
+      if(compound) add(compound[1],70);
+
+      if(!candidates.length) return 0;
+      candidates.sort((a,b)=>b.weight-a.weight||b.pages-a.pages);
+      return candidates[0].pages;
     }
 
     async function fetchNdlPageCount(metadata){
@@ -3373,28 +3411,72 @@
       }
     }
 
-    async function fetchBestPageCount(metadata){
-      const normalized=normalizedIsbn(metadata?.isbn);
-      if(!normalized&&!metadata?.title) return 0;
+    function choosePageCount(results){
+      const ordered=[results.openBD,results.ndl,results.openLibrary,results.googleBooks];
+      const valid=ordered.map(positivePageNumber).filter(Boolean);
+      if(!valid.length) return {pages:0,reason:"取得できず"};
 
-      // 各サービスを並列照会し、待ち時間を抑えながら相互確認する。
-      const results=await Promise.all([
+      const counts=new Map();
+      valid.forEach(value=>counts.set(value,(counts.get(value)||0)+1));
+      const consensus=[...counts.entries()].sort((a,b)=>b[1]-a[1]||b[0]-a[0]);
+      if(consensus[0]?.[1]>=2){
+        return {pages:consensus[0][0],reason:`${consensus[0][1]}サービスの一致`};
+      }
+
+      const labels=["openBD","NDL Search","Open Library","Google Books"];
+      const index=ordered.findIndex(value=>positivePageNumber(value));
+      return {pages:positivePageNumber(ordered[index]),reason:`優先順位により${labels[index]}を採用`};
+    }
+
+    async function fetchPageCountReport(metadata){
+      const normalized=normalizedIsbn(metadata?.isbn);
+      if(!normalized&&!metadata?.title){
+        return {openBD:0,ndl:0,openLibrary:0,googleBooks:0,final:0,reason:"ISBN・タイトルなし"};
+      }
+
+      const settled=await Promise.allSettled([
         fetchOpenBdPageCount(metadata||{}),
         fetchNdlPageCount(metadata||{}),
         fetchOpenLibraryPageCount(metadata||{}),
         fetchGoogleBooksPageCount(metadata||{})
       ]);
-      const valid=results.map(positivePageNumber).filter(Boolean);
-      if(!valid.length) return 0;
+      const values=settled.map(result=>result.status==="fulfilled"?positivePageNumber(result.value):0);
+      const results={openBD:values[0],ndl:values[1],openLibrary:values[2],googleBooks:values[3]};
+      const selected=choosePageCount(results);
+      return {...results,final:selected.pages,reason:selected.reason};
+    }
 
-      // 複数サービスが同じ値を返した場合は、その合意値を最優先する。
-      const counts=new Map();
-      valid.forEach(value=>counts.set(value,(counts.get(value)||0)+1));
-      const consensus=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
-      if(consensus[0]?.[1]>=2) return consensus[0][0];
+    async function fetchBestPageCount(metadata){
+      const report=await fetchPageCountReport(metadata);
+      return report.final;
+    }
 
-      // 合意がない場合は、版の特定精度が高い順（openBD→NDL→Open Library→Google Books）。
-      return results.find(value=>positivePageNumber(value))||0;
+    function diagnosticValue(value){
+      const pages=positivePageNumber(value);
+      return pages?`${pages.toLocaleString()}ページ`:"取得なし";
+    }
+
+    function renderPageDiagnostic(metadata,report=null,status=""){
+      const panel=$("#pageDiagnostic");
+      const grid=$("#pageDiagnosticGrid");
+      const result=$("#pageDiagnosticResult");
+      if(!panel||!grid||!result) return;
+      panel.classList.add("visible");
+      const rows=[
+        ["タイトル",metadata?.title||"—"],
+        ["著者",metadata?.author||"—"],
+        ["ISBN",normalizedIsbn(metadata?.isbn)||"—"],
+        ["出版社",metadata?.publisher||"—"],
+        ["発売日",metadata?.salesDate||"—"],
+        ["openBD",report?diagnosticValue(report.openBD):"確認中…"],
+        ["NDL Search",report?diagnosticValue(report.ndl):"確認中…"],
+        ["Open Library",report?diagnosticValue(report.openLibrary):"確認中…"],
+        ["Google Books",report?diagnosticValue(report.googleBooks):"確認中…"]
+      ];
+      grid.innerHTML=rows.map(([label,value])=>`<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd>`).join("");
+      result.innerHTML=report
+        ? `<strong>最終採用値：${report.final?`${report.final.toLocaleString()}ページ`:"なし"}</strong><br>${escapeHtml(report.reason||"")}`
+        : escapeHtml(status||"各書誌サービスを確認しています…");
     }
 
     window.selectSearchResult=async(payload)=>{
@@ -3406,29 +3488,32 @@
       updatePageFieldNote();
       $("#tags").value=(d.tags||[]).join(", ");
       $("#coverUrl").value=d.coverUrl||"";
-      $("#bookForm").dataset.searchMeta=JSON.stringify({isbn:d.isbn||"",publisher:d.publisher||"",source:d.source||"",sourceUrl:d.sourceUrl||""});
+      $("#bookForm").dataset.searchMeta=JSON.stringify({isbn:d.isbn||"",publisher:d.publisher||"",salesDate:d.salesDate||"",source:d.source||"",sourceUrl:d.sourceUrl||""});
 
+      const metadata={
+        isbn:d.isbn||"",title:d.title||"",author:d.author||"",
+        publisher:d.publisher||"",salesDate:d.salesDate||""
+      };
       const resultBox=$("#bookSearchResults");
-      if(Number(d.pages)>0){
-        resultBox.innerHTML='<div class="note">選択した本の情報を下へ反映しました。状態やメモを確認して保存してください。</div>';
-        return;
+      resultBox.innerHTML='<div class="note">選択した本の情報を反映しました。ページ数を複数の書誌情報から確認しています...</div>';
+      renderPageDiagnostic(metadata,null,"各書誌サービスを確認しています…");
+
+      const report=await fetchPageCountReport(metadata);
+      renderPageDiagnostic(metadata,report);
+
+      // 楽天側にページ数がない場合だけ補完する。既に値がある場合は診断結果で上書きしない。
+      if(!positivePageNumber(d.pages)&&report.final>0){
+        $("#pages").value=report.final;
+        updatePageFieldNote();
       }
 
-      resultBox.innerHTML='<div class="note">選択した本の情報を反映しました。ページ数を複数の書誌情報から確認しています...</div>';
-      const pageCount=await fetchBestPageCount({
-        isbn:d.isbn||"",
-        title:d.title||"",
-        author:d.author||"",
-        publisher:d.publisher||""
-      });
-      if(pageCount>0){
-        $("#pages").value=pageCount;
-        updatePageFieldNote();
+      if(positivePageNumber($("#pages").value)){
         resultBox.innerHTML='<div class="note">選択した本の情報とページ数を反映しました。状態やメモを確認して保存してください。</div>';
       }else{
-        resultBox.innerHTML='<div class="note">選択した本の情報を反映しました。複数の書誌データを確認しましたが、版を特定できるページ数が見つかりませんでした。必要に応じて手入力してください。</div>';
+        resultBox.innerHTML='<div class="note">選択した本の情報を反映しました。版を特定できるページ数が見つかりませんでした。診断結果を確認し、必要に応じて手入力してください。</div>';
       }
     };
+
     $("#bookSearchBtn").onclick=searchBooks;
     $("#bookSearchInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchBooks();}});
     $("#pages")?.addEventListener("input",updatePageFieldNote);
