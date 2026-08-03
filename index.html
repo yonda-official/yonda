@@ -1164,24 +1164,6 @@
       }
     }
 
-    /* ページ数取得診断：本の登録画面内だけで使用 */
-    .page-diagnostic{display:none;margin-top:12px;padding:14px;border:1px solid rgba(111,143,104,.25);border-radius:16px;background:#fff}
-    .page-diagnostic.visible{display:block}
-    .page-diagnostic-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
-    .page-diagnostic-head strong{font-size:.82rem}
-    .page-diagnostic-head span{font-size:.67rem;color:var(--muted)}
-    .page-diagnostic-meta,.page-diagnostic-sources{display:grid;grid-template-columns:118px minmax(0,1fr);gap:7px 10px;font-size:.71rem;line-height:1.45}
-    .page-diagnostic-meta{padding-bottom:11px;margin-bottom:11px;border-bottom:1px solid var(--line)}
-    .page-diagnostic-label{color:var(--muted)}
-    .page-diagnostic-value{min-width:0;overflow-wrap:anywhere}
-    .page-diagnostic-source-detail{display:block;margin-top:2px;color:var(--muted);font-size:.64rem}
-    .page-diagnostic-final{margin-top:12px;padding:11px 12px;border-radius:13px;background:#eef3e9;font-size:.72rem;line-height:1.55}
-    .page-diagnostic-final strong{display:block;color:var(--accent);margin-bottom:2px}
-    @media(max-width:620px){
-      .page-diagnostic{padding:12px}
-      .page-diagnostic-meta,.page-diagnostic-sources{grid-template-columns:96px minmax(0,1fr);gap:6px 8px;font-size:.68rem}
-    }
-
   </style>
 </head>
 <body>
@@ -1819,9 +1801,8 @@
               <button type="button" class="primary" id="bookSearchBtn">検索</button>
             </div>
           </label>
-          <div class="note" style="margin-top:8px">候補を選ぶと、タイトル・著者・ページ数・タグ・表紙情報を自動入力します。</div>
+          <div class="note" style="margin-top:8px">候補を選ぶと、タイトル・著者・表紙などを自動入力します。ページ数は取得できる場合に反映されます。</div>
           <div class="book-search-results" id="bookSearchResults"></div>
-          <div class="page-diagnostic" id="pageDiagnostic" aria-live="polite"></div>
         </div>
         <input type="hidden" id="bookId" />
         <input type="hidden" id="coverUrl" />
@@ -2689,8 +2670,6 @@
       $("#coverUrl").value=book?.coverUrl||"";
       $("#bookForm").dataset.searchMeta=JSON.stringify({isbn:book?.isbn||"",publisher:book?.publisher||"",source:book?.source||"",sourceUrl:book?.sourceUrl||""});
       $("#bookSearchResults").innerHTML="";
-      $("#pageDiagnostic")?.classList.remove("visible");
-      if($("#pageDiagnostic")) $("#pageDiagnostic").innerHTML="";
       $("#bookSearchInput").value="";
       renderGenreSettings();
       $("#deleteBtn").style.visibility=book?"visible":"hidden";
@@ -3353,24 +3332,7 @@
       return {pages:0,reason:"版の一致度が不足したため自動採用せず",source:""};
     }
 
-    function renderPageDiagnostic(metadata,results,decision){
-      const box=$("#pageDiagnostic"); if(!box) return;
-      const value=v=>escapeHtml(String(v||"—"));
-      box.classList.add("visible");
-      box.innerHTML=`<div class="page-diagnostic-head"><strong>ページ数取得の診断</strong><span>原因調査用</span></div>
-        <div class="page-diagnostic-meta">
-          <span class="page-diagnostic-label">タイトル</span><span class="page-diagnostic-value">${value(metadata.title)}</span>
-          <span class="page-diagnostic-label">著者</span><span class="page-diagnostic-value">${value(metadata.author)}</span>
-          <span class="page-diagnostic-label">ISBN-13</span><span class="page-diagnostic-value">${value(normalizedIsbn(metadata.isbn))}</span>
-          <span class="page-diagnostic-label">ISBN-10</span><span class="page-diagnostic-value">${value(isbn13To10(metadata.isbn))}</span>
-          <span class="page-diagnostic-label">出版社</span><span class="page-diagnostic-value">${value(metadata.publisher)}</span>
-          <span class="page-diagnostic-label">発売日</span><span class="page-diagnostic-value">${value(metadata.salesDate)}</span>
-        </div>
-        <div class="page-diagnostic-sources">${results.map(r=>`<span class="page-diagnostic-label">${value(r.source)}</span><span class="page-diagnostic-value">${r.pages?`${r.pages.toLocaleString()}ページ`:"取得なし"}<small class="page-diagnostic-source-detail">${value(r.detail)}</small></span>`).join("")}</div>
-        <div class="page-diagnostic-final"><strong>最終採用値：${decision.pages?`${decision.pages.toLocaleString()}ページ`:"なし"}</strong>${value(decision.reason)}</div>`;
-    }
-
-    async function fetchPageDiagnostic(metadata){
+    async function fetchPageCandidates(metadata){
       const settled=await Promise.allSettled([
         fetchOpenBdPageDiagnostic(metadata),fetchNdlPageDiagnostic(metadata),fetchOpenLibraryPageDiagnostic(metadata),fetchGoogleBooksPageDiagnostic(metadata)
       ]);
@@ -3381,7 +3343,7 @@
     }
 
     async function fetchBestPageCount(metadata){
-      return (await fetchPageDiagnostic(metadata)).decision.pages;
+      return (await fetchPageCandidates(metadata)).decision.pages;
     }
 
     window.selectSearchResult=async(payload)=>{
@@ -3390,19 +3352,18 @@
       $("#pages").value=d.pages||""; updatePageFieldNote(); $("#tags").value=(d.tags||[]).join(", "); $("#coverUrl").value=d.coverUrl||"";
       $("#bookForm").dataset.searchMeta=JSON.stringify({isbn:d.isbn||"",publisher:d.publisher||"",salesDate:d.salesDate||"",source:d.source||"",sourceUrl:d.sourceUrl||""});
       const resultBox=$("#bookSearchResults");
-      resultBox.innerHTML='<div class="note">選択した本の情報を反映しました。無料の書誌データを複数の方法で確認しています...</div>';
-      const metadata={isbn:d.isbn||"",title:d.title||"",author:d.author||"",publisher:d.publisher||"",salesDate:d.salesDate||""};
-      const diagnostic=await fetchPageDiagnostic(metadata);
-      renderPageDiagnostic(metadata,diagnostic.results,diagnostic.decision);
       if(Number(d.pages)>0){
-        resultBox.innerHTML='<div class="note">選択した本の情報と検索元のページ数を反映しました。診断結果も併せて確認できます。</div>';
+        resultBox.innerHTML='<div class="note">タイトル・著者・表紙などと、取得できたページ数を反映しました。内容を確認して保存してください。</div>';
         return;
       }
-      if(diagnostic.decision.pages>0){
-        $("#pages").value=diagnostic.decision.pages; updatePageFieldNote();
+      resultBox.innerHTML='<div class="note">タイトル・著者・表紙などを反映しました。ページ数を無料の書誌データから確認しています...</div>';
+      const metadata={isbn:d.isbn||"",title:d.title||"",author:d.author||"",publisher:d.publisher||"",salesDate:d.salesDate||""};
+      const pageLookup=await fetchPageCandidates(metadata);
+      if(pageLookup.decision.pages>0){
+        $("#pages").value=pageLookup.decision.pages; updatePageFieldNote();
         resultBox.innerHTML='<div class="note">選択した本の情報とページ数を反映しました。状態やメモを確認して保存してください。</div>';
       }else{
-        resultBox.innerHTML='<div class="note">版を安全に特定できるページ数が見つかりませんでした。診断結果を確認し、必要に応じて手入力してください。</div>';
+        resultBox.innerHTML='<div class="note">タイトル・著者・表紙などを反映しました。ページ数は取得できなかったため、必要に応じて手入力してください。</div>';
       }
     };
     $("#bookSearchBtn").onclick=searchBooks;
