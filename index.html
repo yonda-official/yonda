@@ -14,6 +14,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#6f8f68" />
   <title>Yonda?</title>
+  <meta name="application-name" content="Yonda?" />
+  <meta name="description" content="読んだ本や心に残った文章を、自分だけの本棚として記録し、振り返るための読書記録サービスです。" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="ja_JP" />
+  <meta property="og:site_name" content="Yonda?" />
+  <meta property="og:title" content="Yonda?" />
+  <meta property="og:description" content="読んだ本や心に残った文章を、自分だけの本棚として記録し、振り返るための読書記録サービスです。" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Yonda?" />
+  <meta name="twitter:description" content="読んだ本や心に残った文章を、自分だけの本棚として記録し、振り返るための読書記録サービスです。" />
   <style>
     :root{
       --bg:#f7f3ea;
@@ -1261,6 +1271,17 @@
       }
     }
 
+    .public-legal-footer{
+      max-width:1180px;margin:18px auto 78px;padding:0 16px;text-align:center;
+      color:var(--muted);font-size:.68rem;line-height:1.7;
+    }
+    .public-legal-links{display:flex;justify-content:center;gap:8px 14px;flex-wrap:wrap;margin-bottom:6px}
+    .public-legal-link{border:0;background:transparent;color:var(--muted);padding:3px 0;text-decoration:underline;text-underline-offset:3px}
+    .policy-meta{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);color:var(--muted);font-size:.68rem;line-height:1.65}
+    .about-feature-list{display:grid;gap:8px;margin:12px 0 0;padding:0;list-style:none}
+    .about-feature-list li{padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.72);font-size:.75rem;line-height:1.55}
+    @media(max-width:620px){.public-legal-footer{margin-bottom:72px;padding:0 12px}.public-legal-links{gap:6px 12px}}
+
   </style>
 </head>
 <body>
@@ -1424,6 +1445,17 @@
     </section>
   </main>
 
+
+  <footer class="public-legal-footer" aria-label="サービス情報">
+    <div class="public-legal-links">
+      <button class="public-legal-link" type="button" data-open-legal="aboutSection">Yonda?について</button>
+      <button class="public-legal-link" type="button" data-open-legal="privacySection">プライバシーポリシー</button>
+      <button class="public-legal-link" type="button" data-open-legal="termsSection">利用規約</button>
+      <button class="public-legal-link" type="button" data-open-legal="contactSection">お問い合わせ</button>
+    </div>
+    <div>© 2026 Yonda?</div>
+  </footer>
+
   <nav class="bottom-nav">
     <button class="active" data-section="homeSection"><b>⌂</b>ホーム</button>
     <button data-section="statsSection"><b>▥</b>マイダッシュボード</button>
@@ -1568,12 +1600,32 @@
           <input id="jsonImportInput" type="file" accept="application/json,.json" hidden />
         </section>
 
+
+        <details class="settings-card legal-details" id="aboutSection">
+          <summary>Yonda?について</summary>
+          <div class="legal-content">
+            <p class="legal-text"><strong>自分のペースで、読んだ本を残すための個人向け読書記録サービスです。</strong><br>
+            Yonda?は、これまで読んだ本、心に残った文章、読書の傾向を自分の本棚として長く保存し、振り返ることを大切にしています。</p>
+            <ul class="about-feature-list">
+              <li><strong>本棚</strong><br>登録した本を、実際の本棚を眺めるような背表紙のデザインで一覧できます。読み終えた本も、これから読みたい本も、自分の好きな順番に並べ替えながら、少しずつ自分だけの本棚を育ててください。</li>
+              <li><strong>読書記録</strong><br>状態、評価、読了日、ジャンル・タグ、一言メモ、お気に入りの文章、本との出会い方を保存できます。</li>
+              <li><strong>検索と自動入力</strong><br>タイトル・著者・表紙などを自動入力します。ページ数は取得できる場合に反映されます。</li>
+              <li><strong>振り返り</strong><br>カレンダーやマイダッシュボードで、自分の読書履歴や傾向を確認できます。</li>
+              <li><strong>データ保存</strong><br>無料アカウントでは端末間同期を利用でき、JSON・CSVによるバックアップにも対応しています。</li>
+            </ul>
+            <p class="policy-meta">サービス名：Yonda?<br>運営形態：個人運営<br>お問い合わせ：本サービス内のお問い合わせフォーム</p>
+          </div>
+        </details>
+
         <details class="settings-card legal-details">
           <summary>利用サービス</summary>
           <div class="legal-content">
-            <p class="legal-text"><strong>Supabase</strong><br>アカウント認証とクラウド上の読書データ同期に利用します。</p>
+            <p class="legal-text"><strong>Supabase</strong><br>アカウント認証、クラウド上の読書データ同期、お問い合わせ処理などに利用します。</p>
             <p class="legal-text"><strong>楽天ウェブサービス（楽天ブックス）</strong><br>タイトル・著者名・ISBNから書籍情報を検索し、本の登録内容を自動入力するために利用します。</p>
-            <p class="legal-text"><strong>openBD・Google Books</strong><br>ISBNからページ数などの書誌情報を補完するために利用します。</p>
+            <p class="legal-text"><strong>openBD・国立国会図書館サーチ・Open Library・Google Books</strong><br>ISBN、タイトル、著者名などからページ数その他の書誌情報を補完するために利用します。情報が取得できない場合や、版によって内容が異なる場合があります。</p>
+            <p class="legal-text"><strong>Google Analytics</strong><br>利用状況の把握、不具合の調査およびサービス改善のために利用します。</p>
+            <p class="legal-text"><strong>Resend</strong><br>お問い合わせ内容を運営者へ送信するために利用します。</p>
+            <p class="legal-text"><strong>Google AdSense</strong><br>広告掲載開始後、サービス運営のための広告配信に利用する予定です。</p>
           </div>
         </details>
 
@@ -1584,57 +1636,24 @@
           </div>
         </details>
 
-        <details class="settings-card legal-details">
+        <details class="settings-card legal-details" id="privacySection">
           <summary>プライバシーポリシー</summary>
           <div class="legal-content">
-            
-            <p class="legal-text"><strong>1. 基本方針</strong><br>
-            Yonda? は、個人情報の保護に関する法律その他の関係法令・ガイドラインを遵守し、
-            ユーザー情報を適切に取り扱います。</p>
-            <p class="legal-text"><strong>2. 取得する情報</strong><br>
-            表示名、メールアドレス、認証情報、読書記録、評価、感想、引用、タグ、
-            利用プラン、問い合わせ内容、決済状況、端末・ブラウザ情報、IPアドレス、
-            Cookieその他の識別子、アクセス日時、操作履歴、不具合情報を取得する場合があります。
-            クレジットカード番号等の決済情報は決済事業者が取り扱い、運営者が直接保存しない設計を予定しています。</p>
-            <p class="legal-text"><strong>3. 利用目的</strong><br>
-            アカウント作成・本人確認、サービス提供、端末間同期、データ保存、
-            Pro機能およびAI分析の提供、料金請求、問い合わせ対応、不正利用防止、
-            障害調査、機能改善、統計情報の作成、重要なお知らせの送付、
-            法令上必要な対応のために利用します。</p>
-            <p class="legal-text"><strong>4. 利用目的の変更</strong><br>
-            利用目的を変更する場合は、変更前の目的と合理的な関連性を有する範囲で行い、
-            本サービス上で公表またはユーザーへ通知します。</p>
-            <p class="legal-text"><strong>5. 第三者提供</strong><br>
-            本人の同意がある場合、法令に基づく場合、人の生命・身体・財産の保護に必要で
-            同意取得が困難な場合等を除き、個人データを第三者へ提供しません。
-            業務委託、事業承継、共同利用等、法令上第三者提供に該当しない場合があります。</p>
-            <p class="legal-text"><strong>6. 委託先</strong><br>
-            Google認証、Supabase、楽天ウェブサービス、Google Books、openBD、
-            お問い合わせ送信、広告配信等のため外部サービスを利用する場合があります。
-            委託先・提供先を適切に選定し、必要な範囲で監督します。</p>
-            <p class="legal-text"><strong>7. 外国にある事業者の利用</strong><br>
-            クラウド、AI、決済等で国外の事業者を利用する場合があります。
-            正式公開時には、利用するサービス、保存先、提供先国の制度等を確認し、
-            法令に従って必要な情報提供または同意取得を行います。</p>
-            <p class="legal-text"><strong>8. 安全管理措置</strong><br>
-            アクセス制御、認証、通信の暗号化、権限管理、ログ監視、バックアップ、
-            委託先管理等、漏えい・滅失・毀損・不正アクセスを防ぐための合理的な安全管理措置を講じます。</p>
-            <p class="legal-text"><strong>9. 保存期間</strong><br>
-            利用目的の達成に必要な期間、法令上必要な期間、またはユーザーアカウントが存続する期間保存し、
-            不要となった情報は合理的な方法で削除または匿名化します。</p>
-            <p class="legal-text"><strong>10. Cookie・アクセス解析</strong><br>
-            ログイン状態の維持、利用状況の把握、品質改善、不正利用防止および広告配信のためCookie等を使用する場合があります。
-            Google AdSenseを利用する場合、Googleおよび広告配信事業者がCookie等を使用し、利用状況に応じた広告を表示することがあります。
-            ブラウザや広告設定で無効化できますが、一部機能または広告表示に影響する場合があります。</p>
-            <p class="legal-text"><strong>11. 開示等の請求</strong><br>
-            ユーザーは、法令に基づき、保有個人データの利用目的の通知、開示、訂正、追加、削除、
-            利用停止、消去、第三者提供停止、第三者提供記録の開示を請求できます。
-            本人確認のうえ、法令に従って対応します。</p>
-            <p class="legal-text"><strong>12. 未成年者</strong><br>
-            未成年者が利用する場合、必要に応じて親権者等の法定代理人の同意を得てください。</p>
-            <p class="legal-text"><strong>13. 改定</strong><br>
-            本方針を改定する場合は、重要性に応じて本サービス上の表示、電子メールその他適切な方法で通知します。</p>
-
+            <p class="legal-text"><strong>1. 基本方針</strong><br>Yonda?（以下「本サービス」）は、個人情報の保護に関する法律その他の関係法令を踏まえ、ユーザーに関する情報を適切に取り扱います。</p>
+            <p class="legal-text"><strong>2. 取得する情報</strong><br>メールアドレスその他の認証情報、読書記録（タイトル、著者、出版社、ISBN、表紙URL、状態、評価、ページ数、読了日、ジャンル・タグ、メモ、お気に入りの文章、本との出会い方等）、お問い合わせ内容、アクセス日時、端末・ブラウザ情報、IPアドレス、Cookieその他の識別子、操作履歴および不具合情報を取得する場合があります。</p>
+            <p class="legal-text"><strong>3. 利用目的</strong><br>アカウント認証、サービス提供、端末間同期、データ保存・復元、お問い合わせ対応、不正利用防止、障害調査、利用状況の分析、品質改善、重要なお知らせおよび法令上必要な対応のために利用します。</p>
+            <p class="legal-text"><strong>4. 外部サービス</strong><br>本サービスは、認証・データ保存にSupabase、書籍検索に楽天ウェブサービス、openBD、国立国会図書館サーチ、Open Library、Google Books、アクセス解析にGoogle Analyticsを利用します。広告掲載開始後はGoogle AdSenseを利用する場合があります。各サービスには、利用に必要な範囲で情報が送信されることがあります。</p>
+            <p class="legal-text"><strong>5. Google Analytics</strong><br>本サービスは、利用状況の把握と改善のためGoogle Analyticsを使用します。Google AnalyticsはCookie等を利用してアクセス情報を収集することがあり、収集された情報はGoogleの方針に基づいて管理されます。</p>
+            <p class="legal-text"><strong>6. Google AdSense・広告Cookie</strong><br>広告掲載開始後、Googleを含む第三者配信事業者はCookieを使用し、ユーザーによる本サービスまたは他のウェブサイトへの過去のアクセス情報に基づいて広告を配信する場合があります。Googleの広告Cookieにより、Googleおよびそのパートナーがユーザーのアクセス情報に基づく広告を表示することがあります。ユーザーはGoogleの広告設定等からパーソナライズ広告を管理または無効化できます。</p>
+            <p class="legal-text"><strong>7. Cookie・同意管理</strong><br>Cookie等は、ログイン状態の維持、セキュリティ、利用状況の分析および広告配信に使用される場合があります。法令またはGoogleのポリシー上必要な地域では、認定された同意管理プラットフォーム等を用いて、必要な情報提供および同意取得を行います。ブラウザ設定でCookieを無効にすると、一部機能が正常に動作しない場合があります。</p>
+            <p class="legal-text"><strong>8. 第三者提供・委託</strong><br>法令に基づく場合等を除き、本人の同意なく個人データを第三者へ提供しません。ただし、サービス運営に必要な範囲で外部事業者へ取扱いを委託する場合があります。</p>
+            <p class="legal-text"><strong>9. 国外の事業者</strong><br>Supabase、Googleその他国外の事業者が提供するサービスを利用するため、情報が国外のサーバー等で処理・保存される場合があります。</p>
+            <p class="legal-text"><strong>10. 安全管理</strong><br>通信の暗号化、認証、アクセス制御、権限管理、ログ記録その他合理的な安全管理措置を講じます。ただし、インターネット上の完全な安全性を保証するものではありません。</p>
+            <p class="legal-text"><strong>11. 保存期間・削除</strong><br>利用目的に必要な期間または法令上必要な期間情報を保存します。ユーザーは設定画面からアカウント削除を行えます。法令上または不正利用防止上保存が必要な情報を除き、合理的な期間内に削除します。</p>
+            <p class="legal-text"><strong>12. 開示等の請求</strong><br>法令に基づく利用目的の通知、開示、訂正、追加、削除、利用停止等の請求は、お問い合わせフォームから受け付けます。必要に応じて本人確認を行います。</p>
+            <p class="legal-text"><strong>13. 未成年者</strong><br>未成年者が本サービスを利用する場合は、必要に応じて親権者等の同意を得てください。</p>
+            <p class="legal-text"><strong>14. 改定</strong><br>本方針を改定する場合は、本サービス上で表示するなど適切な方法で通知します。</p>
+            <p class="policy-meta">制定日：2026年8月4日<br>最終改定日：2026年8月4日<br>お問い合わせ：本サービス内のお問い合わせフォーム</p>
           </div>
         </details>
         <details class="settings-card legal-details">
@@ -1658,41 +1677,24 @@
 
           </div>
         </details>
-        <details class="settings-card legal-details">
+        <details class="settings-card legal-details" id="termsSection">
           <summary>利用規約</summary>
           <div class="legal-content">
-            
-            <p class="legal-text"><strong>1. 適用</strong><br>
-            本規約は、Yonda? が提供するすべての機能および関連サービスの利用に適用されます。</p>
-            <p class="legal-text"><strong>2. アカウント</strong><br>
-            ユーザーは正確な情報を登録し、認証情報を自己の責任で管理します。
-            アカウントの第三者への譲渡・貸与は禁止します。</p>
-            <p class="legal-text"><strong>3. 禁止事項</strong><br>
-            法令違反、公序良俗違反、他者の権利侵害、不正アクセス、サービス妨害、
-            データの不正取得、虚偽登録、アカウント共有、リバースエンジニアリング、
-            自動化手段による過度なアクセス、違法・有害な内容の投稿を禁止します。</p>
-            <p class="legal-text"><strong>4. 投稿・保存データ</strong><br>
-            ユーザーは、自ら登録する感想、引用、画像等について必要な権利を有することを保証します。
-            著作権で保護された文章の過度な転載は避け、引用要件を守ってください。</p>
-            <p class="legal-text"><strong>5. 知的財産権</strong><br>
-            本サービス、画面、ロゴ、プログラム等の権利は運営者または正当な権利者に帰属します。
-            ユーザーが登録したデータの権利はユーザーに留保されますが、
-            サービス提供に必要な範囲で運営者が利用できるものとします。</p>
-            <p class="legal-text"><strong>6. Lite・Pro</strong><br>
-            現時点ではLiteのみを提供し、Proは開発中です。Pro提供開始時には料金、支払時期、自動更新、
-            解約方法、提供開始時期、返金条件は申込画面および特定商取引法に基づく表記に明示します。</p>
-            <p class="legal-text"><strong>7. サービス変更・停止</strong><br>
-            保守、障害、セキュリティ対応、法令変更その他必要な場合、
-            事前通知なく一時停止することがあります。重要な仕様変更や終了は可能な範囲で事前に通知します。</p>
-            <p class="legal-text"><strong>8. 利用停止・登録抹消</strong><br>
-            規約違反、不正利用、料金不払い等がある場合、事前通知なく利用制限または登録抹消を行うことがあります。</p>
-            <p class="legal-text"><strong>9. 規約変更</strong><br>
-            法令に従い、変更の内容と効力発生日を相当期間前に周知します。</p>
-            <p class="legal-text"><strong>10. 準拠法・管轄</strong><br>
-            日本法を準拠法とし、紛争が生じた場合の第一審専属的合意管轄裁判所は、
-            正式公開時に運営者所在地を踏まえて記載します。
-            消費者契約法その他の強行法規の適用を妨げません。</p>
-
+            <p class="legal-text"><strong>1. 適用</strong><br>本規約は、Yonda?が提供するウェブサービスおよび関連機能の利用条件を定めるものです。ユーザーは本規約に同意したうえで利用します。</p>
+            <p class="legal-text"><strong>2. アカウント</strong><br>ユーザーは正確な情報を登録し、認証情報を自己の責任で管理します。アカウントの譲渡、貸与または共有は禁止します。</p>
+            <p class="legal-text"><strong>3. 登録データ</strong><br>ユーザーは、自己の責任で読書記録、メモ、引用その他の情報を登録します。著作権その他の第三者の権利を侵害する内容を登録してはなりません。引用を記録する場合は、私的利用または適法な引用の範囲を超えないよう注意してください。</p>
+            <p class="legal-text"><strong>4. 禁止事項</strong><br>法令または公序良俗に反する行為、他者の権利を侵害する行為、不正アクセス、サービス運営の妨害、過度な自動アクセス、データの不正取得、虚偽情報の登録、プログラムの解析・改変その他運営者が不適切と判断する行為を禁止します。</p>
+            <p class="legal-text"><strong>5. 知的財産権</strong><br>本サービスのプログラム、画面、ロゴ、文章その他の権利は、運営者または正当な権利者に帰属します。ユーザーが登録したデータに関する権利はユーザーに留保されますが、運営者はサービス提供、同期、バックアップ、障害対応等に必要な範囲で取り扱うことができます。</p>
+            <p class="legal-text"><strong>6. 外部サービス・書誌情報</strong><br>本サービスは外部の認証、クラウド、書籍情報、分析および広告サービスを利用します。外部サービスの障害、仕様変更または終了により、一部機能が利用できなくなる場合があります。書誌情報やページ数等の正確性・完全性は保証しません。</p>
+            <p class="legal-text"><strong>7. Lite・将来のPro</strong><br>現在提供するLiteプランは無料です。将来有料機能を提供する場合は、料金、契約期間、自動更新、支払方法、解約方法、返金条件その他必要事項を申込前に明示します。</p>
+            <p class="legal-text"><strong>8. 広告</strong><br>本サービスは運営維持のため広告を掲載する場合があります。広告の内容および広告先の商品・サービスについて、運営者は広告主に代わって保証するものではありません。</p>
+            <p class="legal-text"><strong>9. サービスの変更・停止・終了</strong><br>保守、障害、セキュリティ対応、法令変更、運営上または技術上の事情その他必要な場合、本サービスの全部または一部を変更・停止し、または提供を終了することがあります。サービスを終了する場合は、緊急その他やむを得ない場合を除き、可能な範囲で事前に本サービス上などで通知します。サービス終了後は、クラウド上の読書データを継続して保存・提供できないため、ユーザーは通知された期限までにCSVまたはJSONで必要なデータを保存してください。</p>
+            <p class="legal-text"><strong>10. 利用制限・登録抹消</strong><br>本規約違反、不正利用、長期間の利用がない場合その他運営上必要な場合、利用制限またはアカウント削除を行うことがあります。</p>
+            <p class="legal-text"><strong>11. 保証の否認・責任</strong><br>本サービスは現状有姿で提供され、特定目的への適合性、継続性、完全性、正確性を保証しません。運営者の故意または重過失による場合を除き、法令で許される範囲で、本サービスの利用または利用不能により生じた損害について責任を負いません。消費者契約法その他の強行法規の適用を妨げるものではありません。</p>
+            <p class="legal-text"><strong>12. データのバックアップ</strong><br>障害、端末故障、ブラウザデータ削除その他の原因によりデータが失われる可能性があります。重要な記録はJSONまたはCSVで定期的にバックアップしてください。</p>
+            <p class="legal-text"><strong>13. 規約の変更</strong><br>法令に従い、変更内容と効力発生日を本サービス上で周知します。変更後に本サービスを利用した場合、変更後の規約に同意したものとみなされることがあります。</p>
+            <p class="legal-text"><strong>14. 準拠法・管轄</strong><br>本規約は日本法に準拠します。本サービスに関して紛争が生じた場合、東京地方裁判所または東京簡易裁判所を第一審の専属的合意管轄裁判所とします。ただし、消費者契約法その他の強行法規により別段の定めがある場合を除きます。</p>
+            <p class="policy-meta">制定日：2026年8月4日<br>最終改定日：2026年8月4日</p>
           </div>
         </details>
         <details class="settings-card legal-details">
@@ -1708,6 +1710,8 @@
             <p class="legal-text"><strong>データ保全</strong><br>
             障害、端末故障、ブラウザデータ削除、通信障害、不正アクセス等によりデータが失われる場合があります。
             重要なデータはCSV・JSON等で定期的にバックアップしてください。</p>
+            <p class="legal-text"><strong>サービスの終了</strong><br>
+            運営上、技術上その他の事情により、本サービスの提供を終了する場合があります。可能な範囲で事前にお知らせしますが、終了後はクラウド上のデータを継続して保存・閲覧できません。必要な読書記録は、サービス提供中にCSVまたはJSONで保存してください。</p>
             <p class="legal-text"><strong>外部サービス</strong><br>
             Amazon、決済、認証、クラウド、AI等の外部サービスの障害・仕様変更・終了により、
             一部機能が利用できなくなる場合があります。</p>
@@ -1750,7 +1754,7 @@
         <details class="settings-card legal-details" id="contactSection">
           <summary>お問い合わせ</summary>
           <div class="legal-content">
-            <p class="note">不具合の報告、ご意見、ご質問はこちらからお送りください。返信が必要な場合は、受信できるメールアドレスをご入力ください。</p>
+            <p class="note">不具合の報告、ご意見、ご質問、個人情報に関する請求はこちらからお送りください。返信が必要な場合は、受信できるメールアドレスをご入力ください。入力内容はお問い合わせ対応のために利用します。</p>
             <form class="contact-form" id="contactForm">
             <label>お問い合わせ種別 <span class="required-mark">必須</span>
               <select id="contactCategory" required>
@@ -1776,6 +1780,7 @@
 不具合の場合は、使用端末・ブラウザ・発生手順もご記入いただくと確認がスムーズです。"></textarea>
             </label>
             <label class="contact-honeypot" aria-hidden="true">会社名<input id="contactWebsite" type="text" tabindex="-1" autocomplete="off"></label>
+            <p class="note">送信により、プライバシーポリシーに記載した範囲でお問い合わせ情報を取り扱うことに同意したものとします。</p>
             <button class="primary contact-submit" id="contactSubmitBtn" type="submit">送信する</button>
               <p class="contact-status" id="contactStatus" aria-live="polite"></p>
             </form>
@@ -1805,7 +1810,7 @@
       </div>
       <div class="auth-mail-notice" id="authMailNotice">
         <strong>確認メールについて</strong><br>
-        新規登録後、送信者名「Supabase Auth」から確認メールが届きます。Yonda?の登録確認メールですので、本文内の確認リンクを開いてください。
+        新規登録後、Yonda?の登録確認メールが届きます。本文内の確認リンクを開いて登録を完了してください。
       </div>
       <form id="authForm" class="form-grid">
         <label>メールアドレス<input class="field" id="authEmail" type="email" autocomplete="email" required placeholder="example@email.com"></label>
@@ -2040,7 +2045,7 @@
     }
 
     const ERROR_LOG_KEY = "yonda_error_log_v1";
-    const APP_VERSION = "page-search-max-free-error-log-v17";
+    const APP_VERSION = "brand-structure-v23";
 
     function compactErrorMessage(error){
       const message=error instanceof Error ? error.message : String(error||"Unknown error");
@@ -3031,6 +3036,20 @@
     });
 
     $("#headerAddBtn").addEventListener("click",()=>openModal());
+
+    function openLegalSection(sectionId){
+      openSettings();
+      requestAnimationFrame(()=>{
+        const target=document.getElementById(sectionId);
+        if(!target) return;
+        if(target.tagName === "DETAILS") target.open=true;
+        target.scrollIntoView({behavior:"smooth",block:"start"});
+      });
+    }
+    document.querySelectorAll("[data-open-legal]").forEach(button=>{
+      button.addEventListener("click",()=>openLegalSection(button.dataset.openLegal));
+    });
+
     $("#settingsBtn").addEventListener("click",openSettings);
     $("#closeSettings").onclick=closeSettings;
     $("#settingsModal").addEventListener("click",e=>{if(e.target.id==="settingsModal")closeSettings()});
