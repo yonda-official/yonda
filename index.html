@@ -1810,7 +1810,7 @@
       </div>
       <div class="auth-mail-notice" id="authMailNotice">
         <strong>確認メールについて</strong><br>
-        新規登録後、Yonda?の登録確認メールが届きます。本文内の確認リンクを開いて登録を完了してください。
+        新規登録後、Yonda?の登録確認メールが届きます。本文内の確認リンクを開いて登録を完了してください。※メールはSupabase経由で送信されます。現在、メール本文は英語で表示される場合があります。
       </div>
       <form id="authForm" class="form-grid">
         <label>メールアドレス<input class="field" id="authEmail" type="email" autocomplete="email" required placeholder="example@email.com"></label>
@@ -3709,7 +3709,7 @@
       if(authMode==="signup"){
         trackYondaEvent("sign_up", {method:"email"});
         if(!result.data.session){
-          message.textContent="「Supabase Auth」からYonda?の確認メールを送りました。メール本文内の確認リンクを開いて登録を完了してください。";
+          message.textContent="Yonda?の登録確認メールを送信しました。メール本文の確認リンクを開いて登録を完了してください。※メールはSupabase経由で送信されます。現在、メール本文は英語で表示される場合があります。";
           return;
         }
       }else{
@@ -3757,7 +3757,7 @@
         message.classList.add("error");
         return;
       }
-      message.textContent="パスワード再設定用のメールを送信しました。メール内のリンクを開いてください。";
+      message.textContent="Yonda?のパスワード再設定メールを送信しました。メール内のリンクから新しいパスワードを設定してください。※メールはSupabase経由で送信されます。現在、メール本文は英語で表示される場合があります。";
     };
 
     $("#updatePasswordBtn").onclick=async()=>{
