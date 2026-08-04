@@ -131,6 +131,11 @@
     .month i{display:block;width:100%;max-width:34px;background:var(--accent-2);border-radius:8px 8px 3px 3px;min-height:4px}
     .month span{font-size:.65rem;color:var(--muted)}
     .prompt-box{background:#f5f0e6;border:1px solid var(--line);border-radius:16px;padding:13px;white-space:pre-wrap;font-size:.78rem;line-height:1.65;min-height:112px}
+    .favorite-quote-card{display:grid;gap:8px;min-height:112px;align-content:center}
+    .favorite-quote-text{font-size:.82rem;line-height:1.75;color:var(--text);display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+    .favorite-quote-source{padding-top:8px;border-top:1px solid rgba(222,215,201,.9);font-size:.7rem;color:var(--muted);line-height:1.45}
+    .favorite-quote-source strong{color:var(--text);font-size:.74rem}
+    .favorite-quote-empty{color:var(--muted);font-size:.76rem;line-height:1.65}
     .bottom-nav{
       position:fixed;left:50%;bottom:12px;transform:translateX(-50%);
       width:min(94%,560px);background:rgba(255,253,248,.93);backdrop-filter:blur(14px);
@@ -587,7 +592,9 @@
       border:1px solid var(--line);background:var(--panel-2);border-radius:999px;
       padding:7px 10px;font-size:.72rem;
     }
-    .genre-pill.selectable{cursor:pointer;background:#fff}
+    .genre-pill.selectable{cursor:pointer;background:#fff;transition:background .15s ease,border-color .15s ease,color .15s ease}
+    .genre-pill.selectable.selected{background:#e7efe2;border-color:rgba(111,143,104,.55);color:var(--accent);font-weight:700}
+    .genre-pill.selectable:focus-visible{outline:3px solid rgba(111,143,104,.18);outline-offset:2px}
     .genre-pill button{border:0;background:transparent;color:var(--danger);padding:0 0 0 6px}
     details{border-top:1px solid var(--line);padding:10px 0}
     details:first-of-type{border-top:0}
@@ -1343,8 +1350,8 @@
           </div>
 
           <div class="panel">
-            <div class="panel-head"><h3>最近の一言</h3><span class="tiny">読了メモ</span></div>
-            <div id="recentMemo" class="prompt-box">まだ読了メモがありません。</div>
+            <div class="panel-head"><h3>お気に入りの文章</h3><span class="tiny">本棚からランダム</span></div>
+            <div id="favoriteQuoteCard" class="prompt-box favorite-quote-card"><div class="favorite-quote-empty">お気に入りの文章を登録すると、ここにランダムで表示されます。</div></div>
           </div>
         </aside>
       </div>
@@ -1992,8 +1999,12 @@
     let cloudSyncTimer = null;
     let cloudLoading = false;
 
-    let genres = JSON.parse(localStorage.getItem(GENRES_KEY) || "null") ||
-      ["小説","ビジネス","経営","心理学","歴史","科学","エッセイ","自己啓発"];
+    function normalizeGenres(list){
+      return [...new Set((Array.isArray(list)?list:[]).map(x=>String(x||"").trim()).filter(x=>x && x!=="経営"))];
+    }
+    let genres = normalizeGenres(JSON.parse(localStorage.getItem(GENRES_KEY) || "null") ||
+      ["小説","ビジネス","心理学","歴史","科学","エッセイ","自己啓発"]);
+    localStorage.setItem(GENRES_KEY,JSON.stringify(genres));
     let books = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null") || [];
     let currentFilter = "all";
     let currentEditId = null;
@@ -2198,7 +2209,7 @@
     }
     function applyCloudState(profileRow,bookRows){
       if(profileRow){
-        genres=Array.isArray(profileRow.custom_genres)?profileRow.custom_genres:genres;
+        genres=normalizeGenres(Array.isArray(profileRow.custom_genres)?profileRow.custom_genres:genres);
         const storedProfile=profileRow.settings?.profile||{};
         localStorage.setItem(PROFILE_KEY,JSON.stringify(storedProfile));
         localStorage.setItem(GENRES_KEY,JSON.stringify(genres));
@@ -2479,8 +2490,16 @@
       $("#readCount").textContent = done.length;
       $("#pageCount").textContent = done.reduce((s,b)=>s+(Number(b.pages)||0),0).toLocaleString();
 
-      const memoBook = done.filter(b=>b.memo).sort((a,b)=>(b.finishedAt||"").localeCompare(a.finishedAt||""))[0];
-      $("#recentMemo").textContent = memoBook ? `『${memoBook.title}』\n${memoBook.memo}` : "まだ読了メモがありません。";
+      const quoteBooks=books.filter(book=>String(book.quote||"").trim());
+      const quoteTarget=$("#favoriteQuoteCard");
+      if(quoteTarget){
+        if(quoteBooks.length){
+          const picked=quoteBooks[Math.floor(Math.random()*quoteBooks.length)];
+          quoteTarget.innerHTML=`<div class="favorite-quote-text">「${escapeHtml(String(picked.quote||"").trim())}」</div><div class="favorite-quote-source"><strong>${escapeHtml(picked.title||"無題")}</strong>${picked.author?`<br>${escapeHtml(picked.author)}`:""}</div>`;
+        }else{
+          quoteTarget.innerHTML='<div class="favorite-quote-empty">お気に入りの文章を登録すると、ここにランダムで表示されます。</div>';
+        }
+      }
     }
 
     function getDashboardYear(){
@@ -2939,28 +2958,37 @@
         trackYondaEvent("book_deleted");
       }
     });
+    function currentFormTags(){
+      return [...new Set($("#tags").value.split(",").map(x=>x.trim()).filter(Boolean))];
+    }
     function renderGenreSettings(){
       $("#genreList").innerHTML=genres.map(g=>`
         <span class="genre-pill">${escapeHtml(g)}
           <button type="button" onclick="removeGenre('${encodeURIComponent(g)}')">×</button>
         </span>`).join("");
-      $("#genreSuggestions").innerHTML=genres.map(g=>`
-        <button type="button" class="genre-pill selectable" onclick="selectGenre('${encodeURIComponent(g)}')">${escapeHtml(g)}</button>
+      const selected=currentFormTags();
+      const candidates=[...genres,...selected.filter(g=>!genres.includes(g))];
+      $("#genreSuggestions").innerHTML=candidates.map(g=>`
+        <button type="button" class="genre-pill selectable${selected.includes(g)?" selected":""}"
+          aria-pressed="${selected.includes(g)?"true":"false"}"
+          onclick="toggleGenre('${encodeURIComponent(g)}')">${escapeHtml(g)}</button>
       `).join("");
     }
     window.removeGenre=(encoded)=>{
       const g=decodeURIComponent(encoded);
-      genres=genres.filter(x=>x!==g);
+      genres=normalizeGenres(genres.filter(x=>x!==g));
       localStorage.setItem(GENRES_KEY,JSON.stringify(genres));
       scheduleCloudSync();
       renderGenreSettings();
     };
-    window.selectGenre=(encoded)=>{
+    window.toggleGenre=(encoded)=>{
       const g=decodeURIComponent(encoded);
-      const current=$("#tags").value.split(",").map(x=>x.trim()).filter(Boolean);
-      if(!current.includes(g)) current.push(g);
-      $("#tags").value=current.join(", ");
+      const current=currentFormTags();
+      const next=current.includes(g)?current.filter(x=>x!==g):[...current,g];
+      $("#tags").value=next.join(", ");
+      renderGenreSettings();
     };
+    $("#tags").addEventListener("input",renderGenreSettings);
     function openSettings(){
       renderGenreSettings();
       $("#settingsModal").classList.add("open");
@@ -3034,7 +3062,7 @@
     $("#planModal").addEventListener("click",e=>{if(e.target.id==="planModal")closePlanModal();});
     $("#addGenreBtn").onclick=()=>{
       const g=$("#newGenreInput").value.trim();
-      if(g && !genres.includes(g)){
+      if(g && g!=="経営" && !genres.includes(g)){
         genres.push(g);
         localStorage.setItem(GENRES_KEY,JSON.stringify(genres));
       scheduleCloudSync();
@@ -3079,7 +3107,7 @@
         if(!confirm(`バックアップから${data.books.length}冊を復元します。現在の本棚データは置き換えられます。よろしいですか？`)) return;
         books=data.books;
         if(Array.isArray(data.genres)){
-          genres=data.genres;
+          genres=normalizeGenres(data.genres);
           localStorage.setItem(GENRES_KEY,JSON.stringify(genres));
         }
         localStorage.setItem(STORAGE_KEY,JSON.stringify(books));
