@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja" data-yonda-build="google-form-contact-v30">
+<html lang="ja">
 <head>
 
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-FJZPY111P3"></script>
@@ -10,10 +10,6 @@
     window.gtag('config', 'G-FJZPY111P3');
   </script>
 
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
-  <meta name="yonda-build" content="google-form-contact-v30" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#6f8f68" />
@@ -2019,7 +2015,7 @@
     }
 
     const ERROR_LOG_KEY = "yonda_error_log_v1";
-    const APP_VERSION = "google-form-contact-v30";
+    const APP_VERSION = "brand-structure-v23";
 
     function compactErrorMessage(error){
       const message=error instanceof Error ? error.message : String(error||"Unknown error");
@@ -2063,7 +2059,6 @@
     // 公開中のHTMLが最新版かをGA4で確認する診断イベント。
     window.addEventListener("load",()=>{
       trackYondaEvent("yonda_build_loaded", {build:APP_VERSION});
-      console.info("[Yonda?] build:", APP_VERSION);
     },{once:true});
 
     let analyticsKnownBookIds=new Set(books.map(book=>String(book?.id||"")).filter(Boolean));
@@ -3025,14 +3020,6 @@
         target.scrollIntoView({behavior:"smooth",block:"start"});
       });
     }
-    const GOOGLE_FORM_URL = "https://forms.gle/31abNwvx12yuavFu6";
-    document.getElementById("openGoogleFormBtn")?.addEventListener("click", () => {
-      trackYondaEvent("contact_form_open", {
-        provider:"google_forms"
-      });
-      window.open(GOOGLE_FORM_URL, "_blank", "noopener,noreferrer");
-    });
-
     document.querySelectorAll("[data-open-legal]").forEach(button=>{
       button.addEventListener("click",()=>openLegalSection(button.dataset.openLegal));
     });
@@ -3843,7 +3830,14 @@
     syncJapaneseFinishedDateDisplay();
     updatePageFieldNote();
     initAuth();
-window.open(GOOGLE_FORM_URL, "_blank", "noopener,noreferrer");
+  
+
+    const GOOGLE_FORM_URL = "https://forms.gle/31abNwvx12yuavFu6";
+    document.getElementById("openGoogleFormBtn")?.addEventListener("click", () => {
+      trackYondaEvent("contact_form_open", {
+        provider:"google_forms"
+      });
+      window.open(GOOGLE_FORM_URL, "_blank", "noopener,noreferrer");
     });
 
     // ブラウザ標準の英語バリデーション表示を使わず、一般ユーザー向けの案内を日本語に統一します。
