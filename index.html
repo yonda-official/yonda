@@ -1006,6 +1006,7 @@
       display:grid;
       gap:12px;
     }
+    .reset-panel[hidden]{display:none!important}
 
 
     /* 入力欄の高さを「ジャンル・タグ」欄に統一 */
@@ -1632,7 +1633,7 @@
         <details class="settings-card legal-details">
           <summary>プランの解約</summary>
           <div class="legal-content">
-            <p class="legal-text"><strong>Liteプラン</strong><br>無料のため、解約手続きや料金はありません。利用を終了する場合は、必要に応じてアカウントを削除できます。</p>
+            <p class="legal-text"><strong>Liteプラン</strong><br>無料のため、解約手続きや料金はありません。利用を終了する場合は、設定画面から登録データを削除できます。認証アカウント自体の削除を希望する場合は、お問い合わせフォームから申請してください。</p>
           </div>
         </details>
 
@@ -1642,18 +1643,18 @@
             <p class="legal-text"><strong>1. 基本方針</strong><br>Yonda?（以下「本サービス」）は、個人情報の保護に関する法律その他の関係法令を踏まえ、ユーザーに関する情報を適切に取り扱います。</p>
             <p class="legal-text"><strong>2. 取得する情報</strong><br>メールアドレスその他の認証情報、読書記録（タイトル、著者、出版社、ISBN、表紙URL、状態、評価、ページ数、読了日、ジャンル・タグ、メモ、お気に入りの文章、本との出会い方等）、お問い合わせ内容、アクセス日時、端末・ブラウザ情報、IPアドレス、Cookieその他の識別子、操作履歴および不具合情報を取得する場合があります。</p>
             <p class="legal-text"><strong>3. 利用目的</strong><br>アカウント認証、サービス提供、端末間同期、データ保存・復元、お問い合わせ対応、不正利用防止、障害調査、利用状況の分析、品質改善、重要なお知らせおよび法令上必要な対応のために利用します。</p>
-            <p class="legal-text"><strong>4. 外部サービス</strong><br>本サービスは、認証・データ保存にSupabase、書籍検索に楽天ウェブサービス、openBD、国立国会図書館サーチ、Open Library、Google Books、アクセス解析にGoogle Analyticsを利用します。広告掲載開始後はGoogle AdSenseを利用する場合があります。各サービスには、利用に必要な範囲で情報が送信されることがあります。</p>
+            <p class="legal-text"><strong>4. 外部サービス</strong><br>本サービスは、認証・データ保存にSupabase、書籍検索に楽天ウェブサービス、openBD、国立国会図書館サーチ、Open Library、Google Books、アクセス解析にGoogle Analytics、お問い合わせ送信にResendを利用します。広告掲載開始後はGoogle AdSenseを利用する場合があります。各サービスには、利用に必要な範囲で情報が送信されることがあります。</p>
             <p class="legal-text"><strong>5. Google Analytics</strong><br>本サービスは、利用状況の把握と改善のためGoogle Analyticsを使用します。Google AnalyticsはCookie等を利用してアクセス情報を収集することがあり、収集された情報はGoogleの方針に基づいて管理されます。</p>
             <p class="legal-text"><strong>6. Google AdSense・広告Cookie</strong><br>広告掲載開始後、Googleを含む第三者配信事業者はCookieを使用し、ユーザーによる本サービスまたは他のウェブサイトへの過去のアクセス情報に基づいて広告を配信する場合があります。Googleの広告Cookieにより、Googleおよびそのパートナーがユーザーのアクセス情報に基づく広告を表示することがあります。ユーザーはGoogleの広告設定等からパーソナライズ広告を管理または無効化できます。</p>
             <p class="legal-text"><strong>7. Cookie・同意管理</strong><br>Cookie等は、ログイン状態の維持、セキュリティ、利用状況の分析および広告配信に使用される場合があります。法令またはGoogleのポリシー上必要な地域では、認定された同意管理プラットフォーム等を用いて、必要な情報提供および同意取得を行います。ブラウザ設定でCookieを無効にすると、一部機能が正常に動作しない場合があります。</p>
             <p class="legal-text"><strong>8. 第三者提供・委託</strong><br>法令に基づく場合等を除き、本人の同意なく個人データを第三者へ提供しません。ただし、サービス運営に必要な範囲で外部事業者へ取扱いを委託する場合があります。</p>
             <p class="legal-text"><strong>9. 国外の事業者</strong><br>Supabase、Googleその他国外の事業者が提供するサービスを利用するため、情報が国外のサーバー等で処理・保存される場合があります。</p>
             <p class="legal-text"><strong>10. 安全管理</strong><br>通信の暗号化、認証、アクセス制御、権限管理、ログ記録その他合理的な安全管理措置を講じます。ただし、インターネット上の完全な安全性を保証するものではありません。</p>
-            <p class="legal-text"><strong>11. 保存期間・削除</strong><br>利用目的に必要な期間または法令上必要な期間情報を保存します。ユーザーは設定画面からアカウント削除を行えます。法令上または不正利用防止上保存が必要な情報を除き、合理的な期間内に削除します。</p>
+            <p class="legal-text"><strong>11. 保存期間・削除</strong><br>利用目的に必要な期間または法令上必要な期間情報を保存します。ユーザーは設定画面から読書記録等の登録データを削除できます。認証アカウント自体の削除は、お問い合わせフォームから受け付けます。法令上または不正利用防止上保存が必要な情報を除き、合理的な期間内に削除します。</p>
             <p class="legal-text"><strong>12. 開示等の請求</strong><br>法令に基づく利用目的の通知、開示、訂正、追加、削除、利用停止等の請求は、お問い合わせフォームから受け付けます。必要に応じて本人確認を行います。</p>
             <p class="legal-text"><strong>13. 未成年者</strong><br>未成年者が本サービスを利用する場合は、必要に応じて親権者等の同意を得てください。</p>
             <p class="legal-text"><strong>14. 改定</strong><br>本方針を改定する場合は、本サービス上で表示するなど適切な方法で通知します。</p>
-            <p class="policy-meta">制定日：2026年8月4日<br>最終改定日：2026年8月4日<br>お問い合わせ：本サービス内のお問い合わせフォーム</p>
+            <p class="policy-meta">制定日：2026年8月4日<br>最終改定日：2026年8月6日<br>お問い合わせ：本サービス内のお問い合わせフォーム</p>
           </div>
         </details>
         <details class="settings-card legal-details">
@@ -1672,7 +1673,7 @@
             <p class="legal-text"><strong>匿名・統計情報</strong><br>
             個人を識別できないよう加工した統計情報を、サービス改善や利用傾向の公表に利用する場合があります。</p>
             <p class="legal-text"><strong>アカウント削除</strong><br>
-            ユーザーは設定画面または問い合わせ窓口からアカウント削除を申請できます。
+            ユーザーは設定画面から読書記録等の登録データを削除できます。認証アカウント自体の削除は、お問い合わせ窓口から申請できます。
             法令上または不正利用防止上保存が必要な情報を除き、合理的な期間内に削除します。</p>
 
           </div>
@@ -1694,7 +1695,7 @@
             <p class="legal-text"><strong>12. データのバックアップ</strong><br>障害、端末故障、ブラウザデータ削除その他の原因によりデータが失われる可能性があります。重要な記録はJSONまたはCSVで定期的にバックアップしてください。</p>
             <p class="legal-text"><strong>13. 規約の変更</strong><br>法令に従い、変更内容と効力発生日を本サービス上で周知します。変更後に本サービスを利用した場合、変更後の規約に同意したものとみなされることがあります。</p>
             <p class="legal-text"><strong>14. 準拠法・管轄</strong><br>本規約は日本法に準拠します。本サービスに関して紛争が生じた場合、東京地方裁判所または東京簡易裁判所を第一審の専属的合意管轄裁判所とします。ただし、消費者契約法その他の強行法規により別段の定めがある場合を除きます。</p>
-            <p class="policy-meta">制定日：2026年8月4日<br>最終改定日：2026年8月4日</p>
+            <p class="policy-meta">制定日：2026年8月4日<br>最終改定日：2026年8月6日</p>
           </div>
         </details>
         <details class="settings-card legal-details">
@@ -1790,9 +1791,9 @@
         <section class="settings-card danger-zone">
           <h4>アカウントの削除</h4>
           <p class="note">
-            アカウントと登録データを削除します。実行前に必要なデータをCSVまたはJSONで保存してください。
+            この端末とクラウド上の登録データを削除します。認証アカウント自体は削除されません。実行前に必要なデータをCSVまたはJSONで保存してください。
           </p>
-          <button class="danger-button" id="openDeleteAccountBtn" type="button">アカウントを削除する</button>
+          <button class="danger-button" id="openDeleteAccountBtn" type="button">登録データを削除する</button>
         </section>
 
       </div>
@@ -1834,7 +1835,7 @@
       </div>
 
       <div class="reset-panel" id="passwordResetRequestPanel">
-        <p class="note">登録済みのメールアドレスを入力してください。パスワード再設定用のメールを送信します。</p>
+        <p class="note">登録済みのメールアドレスを入力してください。再設定メールを送信します。メール内のリンクを開いた後に、新しいパスワードの入力画面が表示されます。</p>
         <label>メールアドレス
           <input class="field" id="passwordResetEmail" type="email" autocomplete="email" placeholder="example@email.com">
         </label>
@@ -1859,11 +1860,11 @@
   <div class="modal" id="deleteAccountModal" aria-hidden="true">
     <div class="sheet">
       <div class="sheet-head">
-        <h3>アカウントを削除しますか？</h3>
+        <h3>登録データを削除しますか？</h3>
         <button class="ghost" id="closeDeleteAccountModal">閉じる</button>
       </div>
       <div class="delete-warning">
-        アカウントを削除すると、読書履歴、評価、感想、引用、
+        登録データを削除すると、読書履歴、評価、感想、引用、
         AI分析結果その他の登録情報がすべて削除されます。
         <strong>削除後は復元できません。</strong>
       </div>
@@ -1873,7 +1874,7 @@
       </label>
       <div class="form-actions" style="margin-top:14px">
         <button class="secondary" type="button" id="cancelDeleteAccountBtn">キャンセル</button>
-        <button class="danger-button" type="button" id="confirmDeleteAccountBtn" disabled>完全に削除する</button>
+        <button class="danger-button" type="button" id="confirmDeleteAccountBtn" disabled>登録データを削除する</button>
       </div>
       <p class="note" style="margin-top:12px">
         未ログイン時はこの端末内のデータを削除します。ログイン中はクラウド上の読書データも削除します。認証アカウント自体の完全削除は正式公開前に安全なサーバー処理を追加します。
@@ -3822,7 +3823,7 @@
         await supabaseClient.from('profiles').delete().eq('user_id',currentUser.id);
         await supabaseClient.auth.signOut();
       }
-      alert(currentUser?"登録データを削除しました。認証アカウントの完全削除は正式版で対応します。":"この端末の登録データを削除しました。削除したデータは復元できません。");
+      alert(currentUser?"この端末とクラウド上の登録データを削除しました。認証アカウント自体の削除を希望する場合は、お問い合わせフォームから申請してください。":"この端末の登録データを削除しました。削除したデータは復元できません。");
       location.reload();
     };
 
@@ -3888,7 +3889,9 @@
         const response = await fetch(CONTACT_FUNCTION_URL, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_PUBLISHABLE_KEY,
+            "Authorization": `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
           },
           body: JSON.stringify(payload)
         });
@@ -3906,7 +3909,7 @@
       }catch(error){
         console.error("Contact form error:", error);
         contactStatus.classList.add("error");
-        contactStatus.textContent = "送信できませんでした。時間をおいて再度お試しください。";
+        contactStatus.textContent = "送信できませんでした。通信状態を確認して再度お試しください。解決しない場合は、しばらく時間を置いてください。";
       }finally{
         contactSubmitBtn.disabled = false;
         contactSubmitBtn.textContent = "送信する";
