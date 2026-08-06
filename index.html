@@ -2118,18 +2118,8 @@
       const deletedIds=[...analyticsKnownBookIds].filter(id=>!nextIds.has(id));
       analyticsKnownBookIds=nextIds;
 
-      addedIds.forEach(()=>{
-        trackYondaEvent("book_added", {
-          operation:"create",
-          detection:"id_diff",
-          context,
-          debug_mode:true
-        });
-        trackYondaEvent("book_create_success", {
-          context,
-          debug_mode:true
-        });
-      });
+      // 新規登録イベントは、登録フォームの保存成功直後に直接送信する。
+      // ここではクラウド同期やインポートによるコレクション変化だけを追跡対象にする。
 
       deletedIds.forEach(()=>{
         trackYondaEvent("book_collection_removed", {
@@ -2928,9 +2918,23 @@
         return;
       }
 
-      // 新規追加はpersistBooks内のID差分検出で送信する。
-      // 編集だけはここで明示的に送信する。
-      if(!isNewBook){
+      // ユーザー操作による新規登録は、保存成功後に直接送信する。
+      // 初期ロードやクラウド同期のタイミングに依存させない。
+      if(isNewBook){
+        trackYondaEvent("book_added", {
+          operation:"create",
+          detection:"form_submit",
+          status:data.status,
+          has_isbn:Boolean(data.isbn),
+          source:data.source || "manual",
+          debug_mode:true
+        });
+        trackYondaEvent("book_create_success", {
+          detection:"form_submit",
+          source:data.source || "manual",
+          debug_mode:true
+        });
+      }else{
         trackYondaEvent("book_updated", {
           operation:"update",
           status:data.status,
