@@ -1006,7 +1006,12 @@
       display:grid;
       gap:12px;
     }
-    .reset-panel[hidden]{display:none!important}
+    #passwordResetRequestPanel.is-hidden,
+    #passwordResetUpdatePanel.is-hidden,
+    #passwordResetRequestPanel[hidden],
+    #passwordResetUpdatePanel[hidden]{
+      display:none!important;
+    }
 
 
     /* 入力欄の高さを「ジャンル・タグ」欄に統一 */
@@ -1834,7 +1839,7 @@
         <button class="ghost" type="button" id="closePasswordResetModal">閉じる</button>
       </div>
 
-      <div class="reset-panel" id="passwordResetRequestPanel">
+      <div class="reset-panel" id="passwordResetRequestPanel" aria-hidden="false">
         <p class="note">登録済みのメールアドレスを入力してください。再設定メールを送信します。メール内のリンクを開いた後に、新しいパスワードの入力画面が表示されます。</p>
         <label>メールアドレス
           <input class="field" id="passwordResetEmail" type="email" autocomplete="email" placeholder="example@email.com">
@@ -1842,7 +1847,7 @@
         <button class="primary" type="button" id="sendPasswordResetBtn">再設定メールを送る</button>
       </div>
 
-      <div class="reset-panel" id="passwordResetUpdatePanel" hidden>
+      <div class="reset-panel is-hidden" id="passwordResetUpdatePanel" hidden aria-hidden="true" style="display:none">
         <p class="note">新しいパスワードを入力してください。</p>
         <label>新しいパスワード
           <input class="field" id="newPassword" type="password" autocomplete="new-password" minlength="8" placeholder="8文字以上">
@@ -3618,12 +3623,29 @@
       return "処理を完了できませんでした。入力内容と通信状態をご確認ください。";
     }
 
+    function setPasswordResetMode(updateMode=false){
+      const requestPanel=$("#passwordResetRequestPanel");
+      const updatePanel=$("#passwordResetUpdatePanel");
+
+      requestPanel.hidden=Boolean(updateMode);
+      requestPanel.classList.toggle("is-hidden",Boolean(updateMode));
+      requestPanel.style.display=updateMode?"none":"grid";
+      requestPanel.setAttribute("aria-hidden",updateMode?"true":"false");
+
+      updatePanel.hidden=!updateMode;
+      updatePanel.classList.toggle("is-hidden",!updateMode);
+      updatePanel.style.display=updateMode?"grid":"none";
+      updatePanel.setAttribute("aria-hidden",updateMode?"false":"true");
+
+      $("#passwordResetTitle").textContent=updateMode
+        ?"新しいパスワードを設定"
+        :"パスワードを再設定";
+    }
+
     function openPasswordResetModal(updateMode=false){
+      setPasswordResetMode(updateMode);
       $("#passwordResetModal").classList.add("open");
       $("#passwordResetModal").setAttribute("aria-hidden","false");
-      $("#passwordResetRequestPanel").hidden=updateMode;
-      $("#passwordResetUpdatePanel").hidden=!updateMode;
-      $("#passwordResetTitle").textContent=updateMode?"新しいパスワードを設定":"パスワードを再設定";
       $("#passwordResetMessage").textContent="";
       $("#passwordResetMessage").classList.remove("error");
       if(!updateMode){
@@ -3634,6 +3656,7 @@
     function closePasswordResetModal(){
       $("#passwordResetModal").classList.remove("open");
       $("#passwordResetModal").setAttribute("aria-hidden","true");
+      setPasswordResetMode(false);
     }
 
     function setAuthMode(mode){
